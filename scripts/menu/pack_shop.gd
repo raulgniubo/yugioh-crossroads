@@ -251,7 +251,8 @@ func _show_tab(t: int) -> void:
 	var here := str(Router.roam.get("district", "")) if get_tree().current_scene and "district" in get_tree().current_scene and "_npcs" in get_tree().current_scene else ""
 	if here != "" and WORLD_PACKS.has(here) and t <= 1:
 		var mine: Array = WORLD_PACKS[here]
-		var kept: Array = _packs.filter(func(p): return Collection.base_key(str(p["key"])) in mine or (p.get("families", []) as Array).any(func(f): return f in mine))
+		# (0.82.2: the Echo Pack, Lumen's own, is on the shelf of every world.)
+		var kept: Array = _packs.filter(func(p): return str(p["key"]) == "echo" or Collection.base_key(str(p["key"])) in mine or (p.get("families", []) as Array).any(func(f): return f in mine))
 		if not kept.is_empty():
 			_packs = kept
 	_sel = -1

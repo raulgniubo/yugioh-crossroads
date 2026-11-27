@@ -1820,3 +1820,19 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
 - **0.82.1** (Nov 27, the first small update, 42.5 MB): Alt+F4 closes the game (Router._input: the close request is
   passed round first, so it saves like the window's X). F4 alone is still the performance report. Raul tests on
   Windows himself.
+- **0.82.2** (Nov 27, Raul testing on Windows, all sent as photos):
+  - **Every card of Lumen's can be bought from the first day** ("si no quiero jugar la historia no tengo dónde
+    conseguirla"): `Collection.lumen_pool()` is all of CardData.LUMEN_CARDS (the story still hands the forms over as
+    gifts), the Complete deck (echo_3) has no story lock, and the Echo Pack is on every world's shelf (pack_shop).
+  - **"Where to find it" knows Lumen's cards**: CardFinder.places returns `everywhere_decks` and `story` too
+    (`_lumen_places`); CardWhere shows the Echo Pack and her decks under "Every card shop" and a line for the story
+    gift. The button shows for her cards in the deck editor and the album.
+  - **The whole card is the color of its kind** (card_db._make_original_face + _frame_shine): Effect orange, Fusion
+    purple, Synchro white (dark lettering), Xyz dark, Ritual blue, Spell green, Trap magenta; a light text plate
+    tinted with the color, dark lettering. Before, only a 9 px line and the name bar had the color.
+  - **No card over Lumen's eye**: `LumenSpirit.picture` (set by portrait / portrait_form): the blank cards circling
+    her shrink away in front of her and only pass behind.
+  - **Deck editor**: with one card tapped and the pointer on another, the line and buttons under the big picture
+    were the tapped card's ("You own 2" under a card you had none of). Now they follow the card shown (`_peek`),
+    with "Click the card to pick it". The English "IN THIS GAME" note is not shown in Spanish when the card has
+    Spanish text. Dev: BUILDER_DEV="pin=<id>;peek=<id>;where=<id>".

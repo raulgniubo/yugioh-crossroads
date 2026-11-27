@@ -20,6 +20,10 @@ var size := 0.72                # in the world she is about as big as a football
 ## Which of her forms this is (her cards): 0 the spirit you travel with, 1 Echo Chorus,
 ## 2 Echo Comet, 3 Echo Zenith, 4 Echo Radiant. Set before she enters the tree.
 var form := 0
+## A picture of her (a card's art, the talk box, a deck box): the blank cards circling her only
+## pass BEHIND her. In front they crossed her face, and on her cards it read as a rectangle
+## stuck over her eye.
+var picture := false
 var _tip: ShaderMaterial
 var _extras: Array = []           # [node, home position, sway]: the parts a form adds, drifting a little
 var head_height := 0.2           # for the story camera
@@ -478,6 +482,14 @@ func _process(delta: float) -> void:
 		var hide := 0.07 if mood == "scared" else 0.0
 		hand.position = Vector3((0.21 - hide) * sx, 0.15 + up + sin(_t * 2.6 + sx * 1.3) * 0.02 + (absf(sin(_t * 9.0)) * 0.04 if _talk > 0.0 else 0.0), 0.09 + hide)
 	_ring.rotation.y += delta * (0.9 + fly * 2.0)
+	if picture:
+		for holder in _ring.get_children():
+			for card in (holder as Node3D).get_children():
+				# Whole behind her, gone in front; it shrinks away at her sides as it comes round.
+				var front: float = ((card as Node3D).global_position - global_position).z / maxf(size, 0.1)
+				var k := 1.0 - smoothstep(-0.12, 0.0, front)
+				(card as Node3D).visible = k > 0.03
+				(card as Node3D).scale = Vector3.ONE * maxf(k, 0.03)
 	for i in _extras.size():
 		var ex: Array = _extras[i]
 		if float(ex[2]) < 0.0:
@@ -558,6 +570,7 @@ static func portrait_form(host: Node, f: int) -> Texture2D:
 		var l := LumenSpirit.new()
 		l.form = f
 		l.size = 1.0
+		l.picture = true
 		l.rotation.y = [0.0, 0.25, 0.55, 0.3, 0.18][f]
 		vp.add_child(l)
 		var cam := Camera3D.new()
@@ -653,6 +666,7 @@ static func portrait(host: Node) -> Texture2D:
 	var l := LumenSpirit.new()
 	l.size = 1.0
 	l.rotation.y = 0.28
+	l.picture = true
 	_vp.add_child(l)
 	var cam := Camera3D.new()
 	cam.fov = 30.0

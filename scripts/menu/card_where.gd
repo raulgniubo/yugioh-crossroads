@@ -111,8 +111,11 @@ func _ready() -> void:
 	sc.add_child(pad)
 	pad.add_child(list)
 	var k := 0
-	if not (pl["everywhere"] as Array).is_empty():
-		list.add_child(_section(Loc.t("Every card shop"), Loc.t("Sold in the card shop of every world"), UITheme.ACCENT, pl["everywhere"], [], [], k))
+	if not (pl["everywhere"] as Array).is_empty() or not (pl["everywhere_decks"] as Array).is_empty():
+		list.add_child(_section(Loc.t("Every card shop"), Loc.t("Sold in the card shop of every world"), UITheme.ACCENT, pl["everywhere"], pl["everywhere_decks"], [], k))
+		k += 1
+	if str(pl["story"]) != "":
+		list.add_child(_story(str(pl["story"]), k))
 		k += 1
 	for w in pl["worlds"]:
 		list.add_child(_section(str(w["name"]), str(w["shop"]), w["color"], w["packs"], w["decks"], w["people"], k))
@@ -138,6 +141,35 @@ func _ready() -> void:
 					break)
 	if OS.has_environment("WHERE_SCROLL"):	# dev: check the bottom of a long list
 		get_tree().create_timer(0.6).timeout.connect(func(): sc.scroll_vertical = int(OS.get_environment("WHERE_SCROLL")))
+
+
+## A card the story itself hands you (Lumen's forms): said in words, above the shops.
+func _story(text: String, k: int) -> Control:
+	var col := Color("7fe8ff")
+	var pc := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(col.darkened(0.6), 0.22)
+	sb.set_corner_radius_all(16)
+	sb.border_color = Color(col, 0.55)
+	sb.border_width_left = 5
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.content_margin_left = 20
+	sb.content_margin_right = 18
+	sb.content_margin_top = 14
+	sb.content_margin_bottom = 16
+	pc.add_theme_stylebox_override("panel", sb)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	pc.add_child(v)
+	v.add_child(UITheme.label(Loc.t("The story").to_upper(), 30, col.lightened(0.35), UITheme.title_font()))
+	var l := UITheme.label(text, 20, UITheme.TEXT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(l)
+	pc.modulate.a = 0.0
+	pc.create_tween().tween_property(pc, "modulate:a", 1.0, 0.22).set_delay(0.06 + 0.05 * k)
+	return pc
 
 
 ## One world: its name in its color, then a row each for packs, decks and duelists.

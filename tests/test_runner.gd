@@ -11902,15 +11902,16 @@ func _test_lumen_081() -> void:
 		check(ResourceLoader.exists("res://assets/originals/%d.png" % id), "the painting of %s is in the game" % CardData.get_card(id).get("name", id))
 	check(CardData.get_card(99200014).get("st", "") == "ritual" and CardData.get_card(99200016).get("st", "") == "field" and CardData.get_card(99200018).get("st", "") == "quick-play"
 			and CardData.get_card(99200015).get("st", "") == "continuous" and CardData.get_card(99200020).get("st", "") == "counter", "the new Spells and Traps say what kind they are")
-	# The Echo Pack: the cards around her from the first day, her forms only once the story has handed them over.
+	# The Echo Pack (0.82.2): every card of hers from the first day, whatever the story has reached.
 	var kept_gifts = Collection.record.get("lumen_gifts", [])
 	Collection.record["lumen_gifts"] = []
 	var pool0 := Collection.lumen_pool()
-	check(pool0.has(CardData.LUMEN) and CardData.ECHO_SUPPORT.all(func(x): return pool0.has(int(x))), "Echo Pack: Lumen and every card around her from the first day")
-	check(not pool0.has(99200006) and not pool0.has(99200007) and not pool0.has(99200002) and not pool0.has(99200005), "Echo Pack: none of her forms before the story hands it over")
-	Collection.record["lumen_gifts"] = [99200006]
-	check(Collection.lumen_pool().has(99200006), "Echo Pack: a form joins it when the story has given it")
+	check(CardData.LUMEN_CARDS.all(func(x): return pool0.has(int(x))) and pool0.size() == CardData.LUMEN_CARDS.size(), "Echo Pack: every card of Lumen's from the first day, no story needed")
 	Collection.record["lumen_gifts"] = kept_gifts
+	for id in CardData.LUMEN_CARDS:
+		var pl := CardFinder.places(int(id))
+		check((pl["everywhere"] as Array).any(func(p): return str(p["key"]) == "echo"), "Where to find it: the Echo Pack is listed for %s" % CardData.get_card(int(id)).get("name", id))
+		check(not (pl["everywhere_decks"] as Array).is_empty(), "Where to find it: one of Lumen's decks is listed for %s" % CardData.get_card(int(id)).get("name", id))
 	var staged := {}
 	for g in CardData.LUMEN_GIFTS:
 		staged[int(g[1])] = int(g[0])
@@ -11926,7 +11927,7 @@ func _test_lumen_081() -> void:
 		var vs := Collection.deck_versions(lum[0])
 		check(vs.size() == 3 and vs.map(func(v): return str(v["key"])) == ["echo", "echo_2", "echo_3"], "Lumen's deck comes in three versions")
 		check(vs.size() == 3 and int(vs[0]["price"]) < int(vs[1]["price"]) and int(vs[1]["price"]) < int(vs[2]["price"]) and int(vs[2]["price"]) == Collection.DECK_PRICE, "each version of Lumen's deck has its own price")
-		check(vs.size() == 3 and int(vs[2].get("stage", 0)) == 5 and int(vs[0].get("stage", 0)) == 0 and int(vs[1].get("stage", 0)) == 0, "only the deck with every form waits for the story")
+		check(vs.size() == 3 and vs.all(func(v): return int(v.get("stage", 0)) == 0), "none of Lumen's decks waits for the story")
 		for v in vs:
 			var main := CardData.deck_list(str(v["key"]))
 			var counts := {}

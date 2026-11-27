@@ -144,7 +144,7 @@ func _build_data() -> void:
 		if not CardData.get_card(id).is_empty():
 			lumen.append(id)
 			# (0.81.0) The Echo cards around her are in the pack from the first day; all of them are in her decks.
-			_comes_from[id] = ["The Echo Pack and Lumen's decks in the deck shops"] if id in CardData.ECHO_SUPPORT else ["Story gifts, the Echo Pack and Lumen's decks in the deck shops"]
+			_comes_from[id] = ["The Echo Pack and Lumen's decks in the deck shops"]
 	var speed: Array = []
 	for id in SPEED_IDS:
 		if not CardData.get_card(id).is_empty():
@@ -497,7 +497,7 @@ func _build_detail() -> Control:
 
 
 func _open_where() -> void:
-	if _d_card_id == 0 or _d_card_id in LUMEN_IDS or _d_card_id in SPEED_IDS or find_children("*", "CardWhere", false, false).size() > 0:
+	if _d_card_id == 0 or _d_card_id in SPEED_IDS or find_children("*", "CardWhere", false, false).size() > 0:
 		return
 	Sfx.play("click")
 	add_child(CardWhere.new(_d_card_id))
@@ -689,7 +689,7 @@ func _show_card(id: int, st: String, num: int) -> void:
 	var from: Array = _comes_from.get(id, [])
 	# Where to find it (0.54.0): the packs and which world's shop sells them, the shop decks
 	# that include it, the duelists who play it. Only for cards in the game's shops and worlds.
-	var special := id in LUMEN_IDS or id in SPEED_IDS
+	var special := id in SPEED_IDS      # (0.82.2: Lumen's cards have a "Where to find it" like any other)
 	if special:
 		_d_from.text = (Loc.t("Comes from: %s") % ", ".join(from.map(func(n): return Loc.t(str(n))))) if not from.is_empty() else ""
 	else:

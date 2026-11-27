@@ -182,8 +182,10 @@ static func when_text(h: Array) -> String:
 ## {"everywhere": [packs on every shelf], "worlds": [{key, name, color, shop, packs, decks, people}]}
 static func places(id: int) -> Dictionary:
 	_build()
-	var out := {"everywhere": [], "worlds": []}
+	var out := {"everywhere": [], "everywhere_decks": [], "story": "", "worlds": []}
 	var packs: Array = _packs_of.get(id, [])
+	if CardData.LUMEN_CARDS.has(id):
+		_lumen_places(id, out)
 	for p in packs:
 		if int(p.get("tab", 0)) > 1:
 			(out["everywhere"] as Array).append(p)
@@ -215,6 +217,32 @@ static func places(id: int) -> Dictionary:
 	return out
 
 
+## (0.82.2) Lumen's cards, which only this game has: the Echo Pack holds every one of them and is in
+## every world's shop, and so are her decks. Her forms are also gifts of the story
+## (CardData.LUMEN_GIFTS), but nobody needs the story to own them.
+const GIFT_WHEN := {1: "once the prologue is over", 2: "once Domino's story is over", 3: "once the Academy's story is over",
+	4: "once the 5D's story is over", 5: "once Heartland's story is over"}
+
+static func _lumen_places(id: int, out: Dictionary) -> void:
+	var col: Node = Engine.get_main_loop().root.get_node("Collection")
+	for g in CardData.LUMEN_GIFTS:
+		if int(g[1]) != id:
+			continue
+		if (col.record.get("lumen_gifts", []) as Array).has(id):
+			out["story"] = Loc.t("Also a gift from Lumen: she gave you one in the story.")
+		else:
+			out["story"] = Loc.t("Also a gift from Lumen: she gives you one in the story, %s.") % Loc.t(str(GIFT_WHEN.get(int(g[0]), "")))
+	for p in col.shop_packs():
+		if str(p["key"]) == "echo":
+			(out["everywhere"] as Array).append(p)
+	for e in col.deck_catalog():
+		if not bool(e.get("lumen", false)):
+			continue
+		for v in col.deck_versions(e):
+			if (CardData.deck_list(str(v["key"])) + CardData.extra_list(str(v["key"]))).has(id):
+				(out["everywhere_decks"] as Array).append(v)
+
+
 ## One line for the album's side panel: "3 packs · 2 decks · 4 duelists".
 static func summary(id: int) -> String:
 	var pl := places(id)
@@ -222,6 +250,8 @@ static func summary(id: int) -> String:
 	var nd := {}
 	var nw := 0
 	var who := {}
+	for e in pl["everywhere_decks"]:
+		nd[str(e["key"])] = true
 	for row in pl["worlds"]:
 		np += (row["packs"] as Array).size()
 		for e in row["decks"]:

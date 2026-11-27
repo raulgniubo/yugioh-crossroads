@@ -33,7 +33,7 @@ const PACKS := [
 	{"key": "Vault", "tab": 0, "name": "Duelist's Vault", "color": Color("5affa0"), "blurb": "Classic Spells, Traps and monsters no story duelist plays."},
 	{"key": "frontier", "tab": 0, "name": "New Frontier", "color": Color("4ad8c8"), "price": 200, "blurb": "Cards from after the four shows, picked for this world: hand traps, removal and Extra Deck monsters any deck can use, and seven newer families. Opens when you finish the story."},
 	{"key": "legends", "tab": 0, "name": "Monster Legends", "color": Color("e8b04a"), "blurb": "Normal Monsters from every era: hundreds of them, from the classics to the rare big ones."},
-	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen and the Echo cards around her, up to three of each. Her forms join it as the story hands them to you."},
+	{"key": "echo", "tab": 0, "name": "Echo Pack", "color": Color("7fe8ff"), "price": 300, "size": 3, "blurb": "Cards of this game only: Lumen, every form of hers and the Echo cards around her, up to three of each."},
 	{"key": "sylvan", "tab": 1, "name": "Sylvan Grove", "color": Color("5aa04a"), "family": true, "blurb": "The Sylvan plants of the high mountain: they dig through the top of the Deck, send Plants to the Graveyard and grow into the Sylvan High Protector and High Arbiter."},
 	{"key": "heraldic", "tab": 1, "name": "Heraldic Beasts", "color": Color("8a5ac0"), "family": true, "blurb": "The Heraldic Beasts of the coats of arms, the Heraldry spells that copy and return them, and the Heraldry Numbers they build."},
 	{"key": "artifact", "tab": 1, "name": "Artifact Armory", "color": Color("a0b0d0"), "family": true, "blurb": "The Artifacts, LIGHT weapons of the gods that sit face-down as Spells and come out the moment the other side destroys them."},
@@ -1399,10 +1399,6 @@ func deck_versions(e: Dictionary) -> Array:
 			l["title"] = LUMEN_DECK_TITLES[i]
 			l["blurb"] = LUMEN_DECK_BLURBS[i]
 			l["base"] = base
-			if i == 2:
-				# (her forms are the story's to show: the deck with all of them opens after the last one)
-				l["stage"] = 5
-				l["lock_text"] = "Locked: opens when the story has shown you all of her forms."
 			out.append(l)
 		return out
 	if DeckTiers.ANIME.has(base):
@@ -2496,10 +2492,10 @@ func meet(id: int) -> void:
 
 
 func lumen_pool(open_only := false) -> Array:
-	var had: Array = record.get("lumen_gifts", [])
 	var out: Array = []
-	# (0.81.0: the Echo cards around her are in the pack from the first day; her forms come with the story.)
-	for id in [CardData.LUMEN] + CardData.ECHO_SUPPORT + had:
+	# (0.82.2, Raul: every card of hers can be bought from the first day. The story still hands her
+	# forms over as gifts, but nobody has to play the story to own them.)
+	for id in CardData.LUMEN_CARDS:
 		if not out.has(int(id)) and (not open_only or int(owned.get(int(id), 0)) < 3):
 			out.append(int(id))
 	return out

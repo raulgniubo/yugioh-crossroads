@@ -42,6 +42,7 @@ var _ask_do: Callable
 var _read_l: Label
 var _pin := {}            # the card you tapped: {"id", "from"} with from = col | main | extra | side
 var _act_box: VBoxContainer
+var _peek := -1            # the card under the pointer when it is not the tapped one (the big picture shows it)
 var _mark: Panel
 var _slot_pick: OptionButton
 var _name_edit: LineEdit
@@ -58,6 +59,8 @@ func _panel(pad := 16) -> PanelContainer:
 
 
 func _ready() -> void:
+	if OS.has_environment("BUILDER_DEV"):
+		_dev_env.call_deferred()
 	Router.busy()      # (a ring turns in the corner if this screen takes a moment to come up)
 	_note_seen(true)
 	_seen_at_open = (Collection.record.get("seen", {}) as Dictionary).duplicate()
@@ -1770,12 +1773,48 @@ func _show_tips() -> void:
 	Sfx.play("card", -6.0)
 
 
+## Dev (BUILDER_DEV="pin=<id>;peek=<id>;where=<id>"): tap a card, put the pointer on another, open
+## "Where to find it", for a picture of each.
+func _dev_env() -> void:
+	await get_tree().create_timer(1.5).timeout
+	for bit in OS.get_environment("BUILDER_DEV").split(";", false):
+		var kv := bit.split("=")
+		var id := int(kv[1]) if kv.size() > 1 else 0
+		match kv[0]:
+			"pin":
+				_pin = {"id": id, "from": "col"}
+				_show(id)
+				_refresh_actions()
+			"peek":
+				_show(id)
+			"where":
+				add_child(CardWhere.new(id))
+
+
 func _refresh_actions() -> void:
 	if _act_box == null:
 		return
 	for c in _act_box.get_children():
 		_act_box.remove_child(c)
 		c.queue_free()
+	if _peek >= 0:
+		# The big picture is showing the card under the pointer, not the tapped one: the line under
+		# it is about that card too, and the tapped card's buttons wait until the pointer leaves.
+		# (They used to stay: "You own 2" and "Add to deck" under a card you had none of.)
+		var pk := UITheme.label(Loc.t("In this deck: %d") % (Collection.main.count(_peek) + Collection.extra.count(_peek)) + "   ·   " + Loc.t("You own %d") % Collection.count(_peek), 15, UITheme.GOLD, UITheme.semi_font())
+		pk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		pk.custom_minimum_size = Vector2(290, 0)
+		_act_box.add_child(pk)
+		if Collection.count(_peek) == 0 and _peek != CardData.LUMEN:
+			var pn := UITheme.label(Loc.t("You don't have this card yet. It can go in the deck to plan it; the deck can be dueled with once you have it."), 14, Color("ffb3bd"))
+			pn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			pn.custom_minimum_size = Vector2(290, 0)
+			_act_box.add_child(pn)
+		var ph := UITheme.label(Loc.t("Click the card to pick it: its buttons show up here."), 14, UITheme.TEXT_DIM)
+		ph.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ph.custom_minimum_size = Vector2(290, 0)
+		_act_box.add_child(ph)
+		return
 	if _pin.is_empty():
 		return
 	var id := int(_pin["id"])
@@ -1808,7 +1847,8 @@ func _refresh_actions() -> void:
 		if from == "main":
 			_act_btn(Loc.t("Move to the Side Deck"), Collection.side.size() < Collection.SIDE_MAX, func(): _to_side_deck(id))
 		_act_btn(Loc.t("Add another copy"), Collection.can_add(id, false, true), func(): _quick_add(id, false))
-	if id != CardData.LUMEN and not CardData.is_original(id) or Collection.count(id) == 0:
+	# (0.82.2: Lumen's cards too. They are in the Echo Pack and in her decks now.)
+	if not CardData.is_original(id) or CardData.LUMEN_CARDS.has(id) or Collection.count(id) == 0:
 		_act_btn(Loc.t("Where to find it"), true, func():
 			if find_children("*", "CardWhere", false, false).is_empty():
 				add_child(CardWhere.new(id)))
@@ -2107,13 +2147,18 @@ func _show(id: int) -> void:
 		lines.append(Loc.t("Level %d  ·  %s  ·  %s") % [int(d.get("level", 0)), d.get("attribute", ""), d.get("race", "")])
 		lines.append(Loc.t("ATK %s   DEF %s") % [CardData.stat_text(d.get("atk", 0)), CardData.stat_text(d.get("def", 0))])
 		var note := str(CardEffects.of(str(d.get("name", ""))).get("note", ""))
-		if note != "":
+		# (The note is in English: in Spanish the card's own text below says the same, in Spanish.)
+		if note != "" and not (Loc.lang() == "es" and CardText.spanish(str(d.get("name", ""))) != ""):
 			lines.append(Loc.t("IN THIS GAME: ") + note)
 	lines.append(CardText.shown(str(d.get("name", "")), str(d.get("desc", d.get("text", "")))))
 	lines.append(Loc.t("You own %d.") % Collection.count(id) + "   " + Loc.t(Foil.NAMES[CardData.rarity(id)]))
 	if Collection.banlist and Collection.limit(id) < 3:
 		lines.append(Loc.t(["Forbidden: cannot be used.", "Limited: 1 copy per deck.", "Semi-Limited: 2 copies per deck."][Collection.limit(id)]))
 	_detail_text.text = "\n\n".join(lines)
+	var peek := -1 if int(_pin.get("id", -1)) == id else id
+	if peek != _peek:
+		_peek = peek
+		_refresh_actions()
 
 
 func _unhandled_input(event: InputEvent) -> void:
