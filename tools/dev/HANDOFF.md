@@ -1852,3 +1852,10 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
   LESSON: he likes dark plates + white/gold lettering + strong color. No pale plates with dark lettering.
 - Cards with Lumen on them stop redrawing only when she holds still with her eyes open
   (card_db._hold_when_still, LumenSpirit.pictures_still): a face frozen two seconds in could keep her mid-blink.
+- **0.82.5** (Nov 27): **the card design is back to the 0.81.0 one, whole** (Raul, after seeing the three colored
+  versions: "ese diseño que teníamos me gustaba mucho más. Volvemos a ese y ya está"). Dark card, the kind's color
+  round it and behind the name, white and gold lettering. The frame shader and the gold pieces of 0.82.2 to 0.82.4
+  are gone from the code (they are in git: 6c03cfc1, 3985fd8b). DO NOT redesign the frame again unless he asks.
+  Kept from today: the cards' text and kinds in Spanish when the game is in Spanish, no card across Lumen's eye,
+  no card frozen mid-blink, and everything of 0.82.2 that is not the frame (Echo Pack with every card, "Where to
+  find it", the deck editor's line under the big picture).
