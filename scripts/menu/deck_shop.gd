@@ -407,7 +407,8 @@ func _show_version(j: int) -> void:
 		if ra != rb:
 			return ra > rb
 		return int(CardData.get_card(a).get("atk", 0)) > int(CardData.get_card(b).get("atk", 0)))
-	_see_btn.text = Loc.t("SEE ALL %d CARDS") % pool.size()
+	# (The whole deck, copies and all: it said 24, the different cards, for a deck of 40.)
+	_see_btn.text = Loc.t("SEE ALL %d CARDS") % (main.size() + extra.size())
 	for k in mini(4, pool.size()):
 		var tr := TextureRect.new()
 		tr.texture = Cards.get_face(pool[k])
