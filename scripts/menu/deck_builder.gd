@@ -25,7 +25,6 @@ var _level := 0          # 0 all, 1 = 1 to 4, 2 = 5 to 6, 3 = 7 and up
 var _sort := 0           # 0 type, 1 ATK, 2 level, 3 name
 var _to_side := false
 var _race := ""           # monster Type filter ("" = any)
-var _addable := false     # only cards that can still go into this deck
 var _grid_empty: Label
 var _mine := false        # (0.80.4) only the cards you have; off = every card of the game, yours first, the rest greyed
 const CLASSES := [["", "Any kind"], ["-", "Monsters"], ["normal", "Normal monster"], ["effect", "Effect monster"],
@@ -526,16 +525,8 @@ func _ready() -> void:
 		_mine = on
 		_rebuild_grid())
 	foot.add_child(mine_t)
-	var can_t := CheckButton.new()
-	can_t.text = "Only what I can add"
-	can_t.add_theme_font_size_override("font_size", 15)
-	can_t.tooltip_text = "Hides the cards whose every copy is already in this deck."
-	for cn in ["font_color", "font_pressed_color", "font_hover_color", "font_hover_pressed_color"]:
-		can_t.add_theme_color_override(cn, UITheme.TEXT)
-	can_t.toggled.connect(func(on):
-		_addable = on
-		_rebuild_grid())
-	foot.add_child(can_t)
+	# (0.81.0, Raul: "Only what I can add" read as the same thing as "Only cards I have". It is gone:
+	# one switch for which cards are listed. A card whose every copy is in the deck says so on its tile.)
 	var side_t := CheckButton.new()
 	side_t.text = "Double-click: Side Deck"
 	side_t.add_theme_font_size_override("font_size", 15)
@@ -691,8 +682,6 @@ func _rebuild_grid() -> void:
 			if (_level == 1 and l > 4) or (_level == 2 and (l < 5 or l > 6)) or (_level == 3 and l < 7) or (_level >= 4 and l != _level - 3):
 				continue
 		if _search != "" and not _found(id, d):
-			continue
-		if _addable and not Collection.can_add(id, _to_side, true):
 			continue
 		keep.append(id)
 	# The first screens of tiles are there at once; the rest of a long list follows over the next
