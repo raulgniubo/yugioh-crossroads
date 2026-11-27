@@ -1744,3 +1744,9 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
 - 0.80.3 (Nov 25, 11:50 PM): deck shop side panel ran off the bottom on Raul's screen (the name wrapped to two lines,
   plus the version buttons). Name is one line, shrunk to fit 380 px (40 -> 22); version buttons 88 px; key cards 96x140;
   buy 60, use 52, leave 50, see-all 44; separation 8. At 1600x900 about 80 px are left over.
+
+## PARKED (Raul, Nov 27 morning): iPad / iPhone / Android port
+- Plan doc: https://claude.ai/artifact/FoxMprZWxn9Md7yesVXGBJ (Claude Docs, "Crossroads en iPad, iPhone y Android: plan").
+  NOT approved, NOT started. Raul wants some things in the game polished first; he will send fixes one by one.
+- Facts found: Android + iOS export templates are installed here; Android SDK/NDK downloads are blocked by the proxy
+  (dl.google.com 403); iOS must be compiled/signed on his Mac (needs his OK: his rule is no builds on the Mac).
