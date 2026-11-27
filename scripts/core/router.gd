@@ -137,6 +137,15 @@ func _stall_watch(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Alt+F4 closes the game, as on any Windows program (F4 alone is the performance report, and the
+	# game used to take the F4 of Alt+F4 for it). Closed the same way as the window's X: everything
+	# is told first, so the game is saved on the way out.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F4 and event.alt_pressed:
+		get_viewport().set_input_as_handled()
+		print("ROUTER Alt+F4: closing the game")
+		get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST)
+		get_tree().quit()
+		return
 	if event is InputEventMouseButton and event.pressed and not _click_wait:
 		_click_at = Time.get_ticks_usec()
 		_click_wait = true
@@ -159,7 +168,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_perf_full = false
 			Settings.show_fps = false
 		Settings.save_settings()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F4:
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F4 and not event.alt_pressed:
 		PerfReport.start(get_tree())
 
 

@@ -1817,3 +1817,6 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
   and a cut-off base each show the notice. NOT run: Windows and Mac themselves (no way to run them here).
 - /tmp/synctest.py used to delete build/ in the test copy (it took a fresh base.pck with it): fixed, copy kept in
   tools/dev/synctest.py. `--packs-check=res://a;res://b` prints what a running build sees and quits.
+- **0.82.1** (Nov 27, the first small update, 42.5 MB): Alt+F4 closes the game (Router._input: the close request is
+  passed round first, so it saves like the window's X). F4 alone is still the performance report. Raul tests on
+  Windows himself.
