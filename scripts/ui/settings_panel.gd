@@ -116,6 +116,7 @@ static func open(parent: Node) -> SidePanel:
 			lang.select(i)
 	lang.item_selected.connect(func(i):
 		Settings.language = Loc.LANGS[i][0]
+		Cards.clear_cache()      # (the game's own cards say what they do in the language chosen)
 		Settings.apply()
 		Settings.save_settings()
 		# Everything on screen was built in the old language: reload the scene.

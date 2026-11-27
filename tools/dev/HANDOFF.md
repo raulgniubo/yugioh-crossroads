@@ -1836,3 +1836,10 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
     were the tapped card's ("You own 2" under a card you had none of). Now they follow the card shown (`_peek`),
     with "Click the card to pick it". The English "IN THIS GAME" note is not shown in Spanish when the card has
     Spanish text. Dev: BUILDER_DEV="pin=<id>;peek=<id>;where=<id>".
+- **0.82.3** (Nov 27, Raul: "they look kinda plain", "si está en español pon los efectos en español", "chequea todas"):
+  - The game's own cards have a worked frame (card_db._make_original_face): the color is a shader surface
+    (FRAME_GLSL: gradient, a pattern per kind, bands of light, grain, sunk edges), a double gold edge, a cut name
+    plate, the Attribute as a jewel, stars on a ribbon, gold corner pieces on the picture, ATK/DEF on a plate.
+  - In Spanish the card says what it does in Spanish (CardText.shown) and its kinds too ("Hada / Sincronía /
+    Efecto", "CONTRATRAMPA", "MÁGICA DE VELOCIDAD"). Changing the language clears the face cache.
+  - All 44 originals (22 of Lumen's, 22 Speed Spells) checked on sheets in Spanish: every one has its text and it fits.

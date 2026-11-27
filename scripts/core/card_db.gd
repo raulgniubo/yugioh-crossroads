@@ -816,49 +816,79 @@ func _make_original_face(id: int) -> Texture2D:
 	var ftype: String = d.get("frame", "normal")
 	# (0.82.2, Raul) The WHOLE card is the color of its kind, not only a line round a dark card: in a
 	# hand of several, which is a Spell, a Trap, a Synchro has to be seen at a glance.
-	var tone: Color = {"spell": Color("17a06f"), "trap": Color("b62f7f"), "effect": Color("d07f38"), "fusion": Color("8650bd"),
-			"synchro": Color("dfe3ea"), "xyz": Color("2b2d40"), "ritual": Color("3f78d6")}.get(ftype, Color("c79a55"))
+	# (0.82.3, Raul: "they look kinda plain") The color is a worked surface now (see FRAME_GLSL):
+	# a woven pattern, light running across it, a deeper edge; with gold corner pieces, a cut name
+	# plate, a jewel for the Attribute, a ribbon for the stars and a plate for ATK and DEF.
+	var tone: Color = {"spell": Color("149a6c"), "trap": Color("b52a7c"), "effect": Color("cf7a30"), "fusion": Color("8249bd"),
+			"synchro": Color("e3e7ee"), "xyz": Color("2a2c42"), "ritual": Color("3873d6")}.get(ftype, Color("c79a55"))
 	var pale := tone.get_luminance() > 0.6          # (the Synchro's white: dark lettering on the card itself)
 	var gold := Color("ffd766")
+	var gold_deep := Color("9a6a12")
 	var ink := Color("0b1322")
-	var paper := Color("eef2f8")
-	var deep := tone.darkened(0.62) if not pale else Color("3d4350")
-	var on_body := ink if pale else Color.WHITE       # lettering that sits straight on the card's color
-	# The card: its color, lit from above, inside a gold line.
+	var deep := tone.darkened(0.64) if not pale else Color("39404e")
+	if ftype == "xyz":
+		deep = Color("11121f")
 	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), Color("05080f"))
-	_fill(root, Vector2(7, 7), Vector2(406, 598), tone.lightened(0.2 if not pale else 0.5), tone.darkened(0.34 if not pale else 0.22))
-	_frame_shine(root, tone, pale, ftype)
-	_edge(root, Vector2(5, 5), Vector2(410, 602), gold, 3, 12)
-	_edge(root, Vector2(14, 14), Vector2(392, 584), Color(1, 1, 1, 0.28) if not pale else Color(0, 0, 0, 0.2), 1, 8)
-	# Name, on a plate a few shades deeper than the card.
-	_fill(root, Vector2(24, 24), Vector2(372, 50), deep.lightened(0.12), deep.darkened(0.25))
-	_rect(root, Vector2(24, 74), Vector2(372, 2), gold)
+	# The card itself.
+	var body_rect := ColorRect.new()
+	body_rect.position = Vector2(7, 7)
+	body_rect.size = Vector2(406, 598)
+	var bm := ShaderMaterial.new()
+	bm.shader = _frame_shader()
+	bm.set_shader_parameter("tone", tone)
+	bm.set_shader_parameter("pale", 1.0 if pale else 0.0)
+	bm.set_shader_parameter("weave", float(["effect", "spell", "trap", "fusion", "synchro", "xyz", "ritual"].find(ftype)))
+	body_rect.material = bm
+	root.add_child(body_rect)
+	# Gold round it: a bright line with a deep one inside (a worked edge, not a flat stroke).
+	_edge(root, Vector2(4, 4), Vector2(412, 604), gold_deep, 2, 13)
+	_edge(root, Vector2(6, 6), Vector2(408, 600), gold, 3, 11)
+	_edge(root, Vector2(9, 9), Vector2(402, 594), Color(gold_deep, 0.9), 1, 9)
+	_edge(root, Vector2(15, 15), Vector2(390, 582), Color(1, 1, 1, 0.3) if not pale else Color(0.2, 0.25, 0.4, 0.35), 1, 6)
+	# Name: a plate with cut corners, a few shades deeper than the card.
+	var plate_n := Control.new()
+	plate_n.position = Vector2(22, 22)
+	plate_n.size = Vector2(376, 54)
+	plate_n.draw.connect(_draw_name_plate.bind(plate_n, deep, gold, gold_deep))
+	root.add_child(plate_n)
 	var nm := str(d.get("name", ""))
-	var name_l := _label(root, nm, Vector2(34, 24), Vector2(306, 50), _font_title, 30 if nm.length() <= 20 else (24 if nm.length() <= 25 else 20), Color.WHITE)
-	name_l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
+	var name_l := _label(root, nm, Vector2(38, 24), Vector2(300, 50), _font_title, 30 if nm.length() <= 20 else (24 if nm.length() <= 25 else 20), Color.WHITE)
+	name_l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 	name_l.add_theme_constant_override("shadow_offset_y", 2)
+	# The Attribute, as a jewel in a gold ring.
 	var attr: String = ("TRAP" if is_trap else "SPELL") if is_spell else str(d.get("attribute", "LIGHT"))
 	var colors: Array = ATTRIBUTE_COLORS.get(attr, [Color("3d0f2c"), Color("e24da0")] if is_trap else [Color("0f3d3a"), Color("2de2c6")])
-	_edge(root, Vector2(346, 27), Vector2(44, 44), gold, 2, 22, colors[1])
-	_label(root, attr.substr(0, 1), Vector2(346, 27), Vector2(44, 44), _font_title, 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	# Level (Rank, for an Xyz Monster: on the left) or the kind of Spell.
+	var gem := Control.new()
+	gem.position = Vector2(344, 25)
+	gem.size = Vector2(48, 48)
+	gem.draw.connect(_draw_gem.bind(gem, colors[1], gold, gold_deep))
+	root.add_child(gem)
+	var gl := _label(root, attr.substr(0, 1), Vector2(344, 25), Vector2(48, 48), _font_title, 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	gl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
+	gl.add_theme_constant_override("shadow_offset_y", 2)
+	# Level (Rank, for an Xyz Monster: on the left) or the kind of Spell, on a dark ribbon.
+	var ribbon := Control.new()
+	ribbon.position = Vector2(22, 81)
+	ribbon.size = Vector2(376, 28)
+	root.add_child(ribbon)
 	if is_spell:
 		# (The kind of Spell or Trap, when it has one: Field, Continuous, Quick-Play, Ritual, Counter.)
 		var st_kind := str(d.get("st", "")).to_upper()
 		var kind_line := "TRAP CARD" if is_trap else ("SPEED SPELL" if d.get("speed_spell", false) else "SPELL CARD")
 		if st_kind != "":
 			kind_line = "%s %s" % [st_kind, "TRAP" if is_trap else "SPELL"]
-		var kl := _label(root, kind_line, Vector2(30, 80), Vector2(360, 30), _font_title, 22, on_body, HORIZONTAL_ALIGNMENT_RIGHT)
-		kl.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
-		kl.add_theme_constant_override("shadow_offset_y", 1)
+		var shown_kind := tr(kind_line)
+		ribbon.draw.connect(_draw_ribbon.bind(ribbon, _font_title.get_string_size(shown_kind, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 34.0, false, deep, gold))
+		_label(root, kind_line, Vector2(30, 80), Vector2(356, 30), _font_title, 20, Color("fff3c4"), HORIZONTAL_ALIGNMENT_RIGHT)
 	else:
-		# (Stars: gold with a dark rim, so they read on any color of card; an Xyz's Rank on the left.)
-		var stars := _label(root, "★".repeat(int(d.get("level", 1))), Vector2(30, 80), Vector2(360, 30), _font_title, 24, Color("ffe27a") if ftype != "xyz" else Color("c9b8ff"),
-				HORIZONTAL_ALIGNMENT_LEFT if ftype == "xyz" else HORIZONTAL_ALIGNMENT_RIGHT)
-		stars.add_theme_color_override("font_outline_color", Color("3a2600") if ftype != "xyz" else Color("120a2e"))
-		stars.add_theme_constant_override("outline_size", 5)
-	# The picture, in a gold frame.
-	_rect(root, Vector2(38, 110), Vector2(344, 316), Color(0, 0, 0, 0.28), 6)
+		var n := int(d.get("level", 1))
+		var left := ftype == "xyz"
+		ribbon.draw.connect(_draw_ribbon.bind(ribbon, n * 21.5 + 30.0, left, deep, gold))
+		_label(root, "★".repeat(n), Vector2(34, 80), Vector2(352, 30), _font_title, 23, Color("ffe27a") if not left else Color("cdbdff"),
+				HORIZONTAL_ALIGNMENT_LEFT if left else HORIZONTAL_ALIGNMENT_RIGHT)
+	# The picture: sunk into the card, in a gold frame with a bright inner line and corner pieces.
+	_rect(root, Vector2(36, 108), Vector2(348, 320), Color(0, 0, 0, 0.34), 7)
+	_edge(root, Vector2(39, 111), Vector2(342, 314), gold_deep, 2, 5)
 	_edge(root, Vector2(41, 113), Vector2(338, 310), gold, 3, 4, Color.BLACK)
 	var art_box := Control.new()
 	art_box.position = Vector2(46, 118)
@@ -885,96 +915,218 @@ func _make_original_face(id: int) -> Texture2D:
 					vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
 	else:
 		_speed_art(art_box, id)
+	_edge(root, Vector2(45, 117), Vector2(330, 302), Color(1, 1, 1, 0.22), 1, 2)
 	_crossroads_mark(root, id)
+	var caps := Control.new()
+	caps.position = Vector2(36, 108)
+	caps.size = Vector2(348, 320)
+	caps.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	caps.draw.connect(_draw_corner_caps.bind(caps, gold, gold_deep))
+	root.add_child(caps)
 	# What it does: on a light plate tinted with the card's color, in dark lettering.
-	var plate := tone.lerp(Color("f6f1e4"), 0.84) if not pale else Color("f4f5f8")
-	var dark := deep.darkened(0.25)
-	_rect(root, Vector2(24, 428), Vector2(372, 164), Color(0, 0, 0, 0.3), 8)
-	_edge(root, Vector2(26, 430), Vector2(368, 160), gold.darkened(0.25), 2, 6, plate)
-	var body: String = str(d.get("text", ""))
+	var plate := tone.lerp(Color("f8f2e2"), 0.86) if not pale else Color("f1f3f8")
+	if ftype == "xyz":
+		plate = Color("dcdcea")
+	var dark := deep.darkened(0.2)
+	_rect(root, Vector2(22, 428), Vector2(376, 166), Color(0, 0, 0, 0.36), 9)
+	_edge(root, Vector2(24, 430), Vector2(372, 162), gold_deep, 2, 8)
+	_edge(root, Vector2(26, 432), Vector2(368, 158), gold, 2, 6, plate)
+	_fill(root, Vector2(29, 435), Vector2(362, 70), Color(1, 1, 1, 0.5), Color(1, 1, 1, 0.0))
+	_fill(root, Vector2(29, 530), Vector2(362, 57), Color(tone.darkened(0.3), 0.0), Color(tone.darkened(0.3), 0.16))
+	_edge(root, Vector2(30, 436), Vector2(360, 150), Color(dark, 0.3), 1, 4)
+	# (In Spanish the card says what it does in Spanish: the same text the card list shows.)
+	var body: String = CardText.shown(str(d.get("name", "")), str(d.get("text", "")))
 	if is_spell:
-		var desc := _label(root, body, Vector2(38, 438), Vector2(344, 146), _font_body, 15 if body.length() > 150 else 19, ink)
+		var bl := body.length()
+		var desc := _label(root, body, Vector2(40, 442), Vector2(340, 138), _font_body, 19 if bl <= 110 else (16 if bl <= 180 else (14 if bl <= 250 else 12)), ink)
+		desc.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		desc.clip_text = false
 	else:
-		var kinds := [str(d.get("race", ""))]
+		var kinds := [tr(str(d.get("race", "")))]
 		if ftype in ["fusion", "synchro", "xyz", "ritual"]:
-			kinds.append(ftype.capitalize())
+			kinds.append(tr(ftype.capitalize()))
 		if d.get("tuner", false):
-			kinds.append("Tuner")
-		kinds.append("Effect")
-		_label(root, "[ %s ]" % " / ".join(kinds), Vector2(38, 434), Vector2(344, 30), _font_title, 21, dark)
-		var fx_text := _label(root, body, Vector2(38, 464), Vector2(344, 78), _font_body, 12 if body.length() <= 170 else 10, ink)
+			kinds.append(tr("Tuner"))
+		kinds.append(tr("Effect"))
+		var kl := _label(root, "[ %s ]" % " / ".join(kinds), Vector2(40, 437), Vector2(340, 28), _font_title, 20, dark)
+		kl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		var rule := Control.new()
+		rule.position = Vector2(40, 464)
+		rule.size = Vector2(340, 6)
+		rule.draw.connect(_draw_rule.bind(rule, Color(dark, 0.55)))
+		root.add_child(rule)
+		var bl2 := body.length()
+		var fx_text := _label(root, body, Vector2(40, 470), Vector2(340, 78), _font_body, 12 if bl2 <= 170 else (10 if bl2 <= 260 else 9), ink)
+		fx_text.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		fx_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		fx_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		fx_text.clip_text = false
-		_rect(root, Vector2(38, 546), Vector2(344, 2), Color(dark, 0.75))
-		_label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(38, 548), Vector2(344, 38),
-				_font_title, 28, ink, HORIZONTAL_ALIGNMENT_RIGHT)
+		# ATK and DEF on their own plate, in gold.
+		var stat := Control.new()
+		stat.position = Vector2(126, 551)
+		stat.size = Vector2(260, 34)
+		stat.draw.connect(_draw_stat_plate.bind(stat, deep, gold, gold_deep))
+		root.add_child(stat)
+		var sl := _label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(140, 550), Vector2(246, 36),
+				_font_title, 25, Color("ffe9a8"), HORIZONTAL_ALIGNMENT_CENTER)
+		sl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	return vp.get_texture()
 
 
-## The card's own color is not flat: bands of light run across it on a slant, and each kind has
-## a mark of its own woven in (rings for a Spell, a net for a Trap, stars for an Xyz, a spiral for
-## a Fusion, a flame for a Ritual, straight beams for a Synchro). All of it faint: it is felt more than seen.
-func _frame_shine(root: Control, tone: Color, pale: bool, ftype: String) -> void:
-	var c := Control.new()
-	c.position = Vector2(7, 7)
-	c.size = Vector2(406, 598)
-	c.clip_contents = true
-	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(c)
-	var light := Color(1, 1, 1, 0.1) if not pale else Color(0.35, 0.42, 0.6, 0.1)
-	var mark := Color(1, 1, 1, 0.16) if not pale else Color(0.3, 0.36, 0.52, 0.2)
-	c.draw.connect(_draw_frame_shine.bind(c, light, mark, ftype))
+## The color of one of this game's cards, as a surface: a gradient lit from the top left, a fine
+## pattern woven into it (each kind has its own), two bands of light on a slant, a grain like
+## brushed metal, and edges that sink into shadow.
+const FRAME_GLSL := """
+shader_type canvas_item;
+uniform vec4 tone : source_color = vec4(0.8, 0.5, 0.2, 1.0);
+uniform float pale = 0.0;
+uniform float weave = 0.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float pattern(vec2 px) {
+	if (weave < 0.5) {            // Effect: diamonds
+		vec2 g = px / 17.0; vec2 d = abs(fract(vec2(g.x + g.y, g.x - g.y)) - 0.5);
+		return smoothstep(0.455, 0.5, max(d.x, d.y));
+	} else if (weave < 1.5) {     // Spell: rings
+		vec2 c = fract(px / 30.0) - 0.5; float r = length(c);
+		return (1.0 - smoothstep(0.0, 0.035, abs(r - 0.36))) + 0.7 * (1.0 - smoothstep(0.0, 0.03, abs(r - 0.18)));
+	} else if (weave < 2.5) {     // Trap: a net
+		vec2 g = px / 13.0; vec2 d = abs(fract(vec2(g.x + g.y, g.x - g.y)) - 0.5);
+		return smoothstep(0.44, 0.5, d.x) + smoothstep(0.44, 0.5, d.y);
+	} else if (weave < 3.5) {     // Fusion: two waves crossing
+		float a = sin(px.x / 9.0 + sin(px.y / 23.0) * 2.6); float b = sin(px.x / 9.0 - sin(px.y / 23.0) * 2.6 + 1.7);
+		return (1.0 - smoothstep(0.0, 0.16, abs(a))) + (1.0 - smoothstep(0.0, 0.16, abs(b)));
+	} else if (weave < 4.5) {     // Synchro: fine straight beams
+		return (1.0 - smoothstep(0.0, 0.12, abs(fract(px.y / 9.0) - 0.5))) * 0.8 + (1.0 - smoothstep(0.0, 0.03, abs(fract(px.x / 58.0) - 0.5))) * 0.6;
+	} else if (weave < 5.5) {     // Xyz: stars
+		vec2 cell = floor(px / 15.0); float h = hash(cell);
+		vec2 c = fract(px / 15.0) - vec2(0.2 + 0.6 * hash(cell + 3.1), 0.2 + 0.6 * hash(cell + 7.7));
+		return step(0.78, h) * (1.0 - smoothstep(0.0, 0.16, length(c))) * 3.0;
+	}
+	// Ritual: scales
+	vec2 g = px / vec2(22.0, 15.0); g.x += 0.5 * mod(floor(g.y), 2.0);
+	vec2 c = fract(g) - vec2(0.5, 0.0);
+	return 1.0 - smoothstep(0.0, 0.05, abs(length(c * vec2(1.0, 0.9)) - 0.5));
+}
+void fragment() {
+	vec2 px = UV * vec2(406.0, 598.0);
+	vec3 hi = mix(tone.rgb, vec3(1.0), mix(0.30, 0.75, pale));
+	vec3 lo = tone.rgb * mix(0.50, 0.70, pale);
+	float t = clamp(UV.y * 0.86 + UV.x * 0.14, 0.0, 1.0);
+	vec3 col = mix(hi, lo, smoothstep(0.0, 1.0, t));
+	col += mix(0.14, 0.06, pale) * (1.0 - smoothstep(0.0, 0.85, distance(UV, vec2(0.18, 0.04))));
+	float w = clamp(pattern(px), 0.0, 1.5);
+	col += w * mix(vec3(0.085), vec3(-0.09, -0.08, -0.05), pale);
+	float s = UV.x * 0.9 + UV.y * 0.55;
+	float band = exp(-pow((s - 0.40) / 0.075, 2.0)) + 0.55 * exp(-pow((s - 0.98) / 0.05, 2.0));
+	col += band * mix(vec3(0.17), vec3(0.10, 0.12, 0.2) * -0.55, pale);
+	col += (noise(vec2(px.x * 0.06, px.y * 1.7)) - 0.5) * 0.04;
+	col += (noise(px * 1.1) - 0.5) * 0.03;
+	vec2 q = (UV - 0.5) * vec2(1.0, 1.12);
+	col *= 1.0 - mix(0.42, 0.2, pale) * smoothstep(0.34, 0.80, length(q));
+	COLOR = vec4(col, 1.0);
+}
+"""
+var _frame_sh: Shader
 
 
-func _draw_frame_shine(c: Control, light: Color, mark: Color, ftype: String) -> void:
-	# Slanted bands of light.
-	for b in [[-60.0, 70.0], [110.0, 26.0], [250.0, 110.0], [470.0, 40.0]]:
-		var x := float(b[0])
-		var w := float(b[1])
-		c.draw_colored_polygon(PackedVector2Array([Vector2(x + 180, 0), Vector2(x + 180 + w, 0), Vector2(x + w - 180, 598), Vector2(x - 180, 598)]), light)
-	# The corners sink a little.
-	for corner in [Vector2(0, 0), Vector2(406, 0), Vector2(0, 598), Vector2(406, 598)]:
-		for r in 6:
-			c.draw_circle(corner, 120.0 - r * 18.0, Color(0, 0, 0, 0.035))
-	# The kind's own mark, down the two side strips and between the picture and the text.
-	match ftype:
-		"spell":
-			for y in [140.0, 250.0, 360.0]:
-				for x in [16.0, 390.0]:
-					c.draw_arc(Vector2(x, y), 9.0, 0, TAU, 20, mark, 1.6, true)
-					c.draw_arc(Vector2(x, y), 4.0, 0, TAU, 14, mark, 1.6, true)
-		"trap":
-			for y in range(110, 420, 22):
-				for x in [8.0, 382.0]:
-					c.draw_line(Vector2(x, y), Vector2(x + 16, y + 22), mark, 1.4, true)
-					c.draw_line(Vector2(x + 16, y), Vector2(x, y + 22), mark, 1.4, true)
-		"xyz":
-			for k in 26:
-				var p := Vector2(fmod(k * 97.3, 406.0), fmod(k * 173.9, 598.0))
-				c.draw_circle(p, 1.2 + fmod(k * 0.7, 1.6), Color(0.8, 0.75, 1.0, 0.5))
-		"fusion":
-			for x in [16.0, 390.0]:
-				var pts := PackedVector2Array()
-				for k in 60:
-					var a := k * 0.35
-					pts.append(Vector2(x + cos(a) * (2.0 + k * 0.16), 250.0 + sin(a) * (2.0 + k * 0.16) * 3.2))
-				c.draw_polyline(pts, mark, 1.5, true)
-		"ritual":
-			for y in [150.0, 250.0, 350.0]:
-				for x in [16.0, 390.0]:
-					c.draw_colored_polygon(PackedVector2Array([Vector2(x, y - 13), Vector2(x + 7, y + 3), Vector2(x, y + 11), Vector2(x - 7, y + 3)]), mark)
-		"synchro":
-			for y in range(112, 420, 14):
-				for x in [10.0, 384.0]:
-					c.draw_line(Vector2(x, y), Vector2(x + 12, y), mark, 1.6, true)
-		_:
-			for y in [150.0, 250.0, 350.0]:
-				for x in [16.0, 390.0]:
-					c.draw_colored_polygon(PackedVector2Array([Vector2(x, y - 8), Vector2(x + 8, y), Vector2(x, y + 8), Vector2(x - 8, y)]), mark)
+func _frame_shader() -> Shader:
+	if _frame_sh == null:
+		_frame_sh = Shader.new()
+		_frame_sh.code = FRAME_GLSL
+	return _frame_sh
+
+
+## The name's plate: cut corners, darker toward the foot, a gloss across its top half, gold round it.
+func _draw_name_plate(c: Control, deep: Color, gold: Color, gold_deep: Color) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	var k := 9.0
+	var pts := PackedVector2Array([Vector2(k, 0), Vector2(w - k, 0), Vector2(w, k), Vector2(w, h - k), Vector2(w - k, h), Vector2(k, h), Vector2(0, h - k), Vector2(0, k)])
+	var top := deep.lightened(0.2)
+	var foot := deep.darkened(0.35)
+	c.draw_polygon(pts, PackedColorArray([top, top, top, foot, foot, foot, foot, top]))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(k, 2), Vector2(w - k, 2), Vector2(w - 2, k), Vector2(w - 2, h * 0.46), Vector2(2, h * 0.46), Vector2(2, k)]), Color(1, 1, 1, 0.09))
+	var ring := pts.duplicate()
+	ring.append(pts[0])
+	c.draw_polyline(ring, gold_deep, 4.0, true)
+	c.draw_polyline(ring, gold, 2.0, true)
+
+
+## The Attribute's jewel: a gold ring, the color lit from above, a gloss on its upper left.
+func _draw_gem(c: Control, col: Color, gold: Color, gold_deep: Color) -> void:
+	var m := c.size / 2.0
+	c.draw_circle(m + Vector2(0, 2), 23.0, Color(0, 0, 0, 0.45))
+	c.draw_circle(m, 23.0, gold_deep)
+	c.draw_circle(m, 21.5, gold)
+	c.draw_circle(m, 18.5, col.darkened(0.45))
+	for i in 7:
+		var t := float(i) / 6.0
+		c.draw_circle(m + Vector2(-2.0, -3.0) * t, 18.5 - 6.5 * t, col.darkened(0.45).lerp(col.lightened(0.18), t))
+	c.draw_circle(m + Vector2(-6, -8), 5.0, Color(1, 1, 1, 0.38))
+	c.draw_circle(m + Vector2(-7.5, -9.5), 2.2, Color(1, 1, 1, 0.7))
+	c.draw_arc(m, 18.5, 0, TAU, 40, Color(0, 0, 0, 0.35), 1.2, true)
+
+
+## The ribbon the stars (or the kind of Spell) sit on: against the right edge, cut on a slant at
+## its other end (an Xyz's: against the left).
+func _draw_ribbon(c: Control, width: float, left: bool, deep: Color, gold: Color) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	var x0 := 0.0 if left else w - width
+	var x1 := width if left else w
+	var pts: PackedVector2Array
+	if left:
+		pts = PackedVector2Array([Vector2(x0, 0), Vector2(x1, 0), Vector2(x1 - 14, h), Vector2(x0, h)])
+	else:
+		pts = PackedVector2Array([Vector2(x0 + 14, 0), Vector2(x1, 0), Vector2(x1, h), Vector2(x0, h)])
+	c.draw_colored_polygon(pts, Color(deep.darkened(0.3), 0.82))
+	c.draw_line(Vector2(x0 + (0 if left else 14), 0), Vector2(x1, 0), Color(gold, 0.55), 1.0, true)
+	c.draw_line(Vector2(x0, h), Vector2(x1 - (14 if left else 0), h), Color(gold, 0.55), 1.0, true)
+
+
+## Gold pieces on the four corners of the picture's frame.
+func _draw_corner_caps(c: Control, gold: Color, gold_deep: Color) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	for corner in [[Vector2(0, 0), Vector2(1, 1)], [Vector2(w, 0), Vector2(-1, 1)], [Vector2(0, h), Vector2(1, -1)], [Vector2(w, h), Vector2(-1, -1)]]:
+		var o: Vector2 = corner[0]
+		var s: Vector2 = corner[1]
+		var tri := PackedVector2Array([o, o + Vector2(26, 0) * s, o + Vector2(15, 5) * s, o + Vector2(5, 5) * s, o + Vector2(5, 15) * s, o + Vector2(0, 26) * s])
+		c.draw_colored_polygon(tri, gold)
+		var line := tri.duplicate()
+		line.append(tri[0])
+		c.draw_polyline(line, gold_deep, 1.2, true)
+		c.draw_circle(o + Vector2(8.5, 8.5) * s, 2.6, gold_deep)
+		c.draw_circle(o + Vector2(8.5, 8.5) * s, 1.4, Color("fff6d0"))
+
+
+## A fine line with a diamond in its middle (under a monster's kinds).
+func _draw_rule(c: Control, col: Color) -> void:
+	var w := c.size.x
+	var y := c.size.y / 2.0
+	c.draw_line(Vector2(0, y), Vector2(w / 2.0 - 9, y), col, 1.2, true)
+	c.draw_line(Vector2(w / 2.0 + 9, y), Vector2(w, y), col, 1.2, true)
+	c.draw_colored_polygon(PackedVector2Array([Vector2(w / 2.0, y - 4), Vector2(w / 2.0 + 5, y), Vector2(w / 2.0, y + 4), Vector2(w / 2.0 - 5, y)]), col)
+
+
+## ATK and DEF sit on a plate of their own, cut on a slant at its left end.
+func _draw_stat_plate(c: Control, deep: Color, gold: Color, gold_deep: Color) -> void:
+	var w := c.size.x
+	var h := c.size.y
+	var pts := PackedVector2Array([Vector2(16, 0), Vector2(w - 5, 0), Vector2(w, 5), Vector2(w, h - 5), Vector2(w - 5, h), Vector2(0, h)])
+	var top := deep.lightened(0.14)
+	var foot := deep.darkened(0.35)
+	c.draw_polygon(pts, PackedColorArray([top, top, top, foot, foot, foot]))
+	var ring := pts.duplicate()
+	ring.append(pts[0])
+	c.draw_polyline(ring, gold_deep, 3.0, true)
+	c.draw_polyline(ring, gold, 1.3, true)
 
 
 ## The picture on a Speed Spell: the road rushing at you, and how many Speed Counters it asks for.
