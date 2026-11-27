@@ -8414,3 +8414,15 @@ You hold three of every card of Lumen's that the Echo Pack has for now.	Ya tiene
 Basic	Básico
 Support	Apoyo
 Complete	Completo
+This version needs a newer base	Esta versión necesita una base más nueva
+This version was made for Base %d. The one in the folder is Base %d.	Esta versión se hizo para la Base %d. La que está en la carpeta es la Base %d.
+Download Base %d, put its base.pck file in this folder in place of the old one, and open the game again:	Descarga la Base %d, pon su archivo base.pck en esta carpeta en lugar del viejo y abre el juego otra vez:
+The base file cannot be read	No se puede leer el archivo de la base
+The base.pck file in the folder did not download whole, or is not the game's.	El archivo base.pck de la carpeta no se descargó completo, o no es el del juego.
+Download Base %d again, put its base.pck file in this folder in place of the old one, and open the game again:	Descarga la Base %d otra vez, pon su archivo base.pck en esta carpeta en lugar del viejo y abre el juego otra vez:
+The game's base is missing	Falta la base del juego
+This is the small part of the game. The big part (the voices and the 3D models) comes one time only, in a file called base.pck.	Esta es la parte chica del juego. La parte grande (las voces y los modelos 3D) viene una sola vez, en un archivo llamado base.pck.
+Download Base %d, put its base.pck file in this folder, and open the game again:	Descarga la Base %d, pon su archivo base.pck en esta carpeta y abre el juego otra vez:
+Your game, your cards and your decks are safe. Nothing of yours was touched.	Tu partida, tus cartas y tus decks están a salvo. No se tocó nada tuyo.
+Open the folder	Abrir la carpeta
+Close the game	Cerrar el juego

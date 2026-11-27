@@ -8,7 +8,7 @@ config_version=5
 config/name="Yu-Gi-Oh! Crossroads"
 config/description="Private fan project. Not affiliated with Konami."
 config/icon="res://icon.png"
-config/version="0.81.0"
+config/version="0.82.0"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/use_custom_user_dir=true
@@ -19,6 +19,7 @@ run/flush_stdout_on_print=true
 
 [autoload]
 
+Packs="*res://scripts/core/packs.gd"
 Settings="*res://scripts/core/settings.gd"
 Profile="*res://scripts/core/profile.gd"
 Cards="*res://scripts/core/card_db.gd"
@@ -40,6 +41,10 @@ window/size/window_height_override=900
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/vsync/vsync_mode=0
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/crossroads_packs/plugin.cfg")
 
 [input]
 

@@ -1784,3 +1784,36 @@ Windows join line. Then 0.66.0 (Act 1: chapters 2-7, classes, Dorm Cup, Torneo d
   (the "Every card in the game" switch is gone) and finds Lumen's cards; "Cargando" label moved off the ring.
 - OPEN: his brother lost Lumen's deck and some cards going 0.73.1 -> 0.80.2; no cause found in code; waiting for his
   `Crossroads Data/saves` and `%APPDATA%\Godot\app_userdata\Yu-Gi-Oh! Crossroads`.
+
+## 0.82.0 (Nov 27): the base and the small update (Raul: his brother has 5 Mbps; "vamos a hacer eso")
+A build is two packs now, so an update is one small file in the chat and not 1 GB in five parts.
+- **Crossroads.pck** (about 40 MB, 34 MB zipped): the game. Code, cards, menus, and every voice or model that is new
+  or changed since the base. The program opens it by itself (Windows: `embed_pck=false`, the exe is the bare engine).
+  This file IS the update, and it is cumulative: good from any older version on the same base.
+- **base.pck** (1.05 GB): voices/ and assets/models/ as they were when the base was made. Downloaded once. The same
+  file for Windows and Mac (nothing in it is platform specific: the textures are plain ctex).
+- **How they are made**: `addons/crossroads_packs/export_split.gd` (an EditorExportPlugin, on in project.godot),
+  driven by `CR_PACK`: not set = one pack as before; `base` (+ `CR_BASE_ID=N`, preset "Base") = only the base files,
+  writes `tools/dev/base_manifest.json` (path -> md5 of the file and of its .import); `main` = skips every base file
+  whose stamp still matches the manifest and adds `res://pack_info.json` {split, base, base_bytes, version, gone}.
+  A main export takes 20 seconds (the base one 6 minutes).
+- **In the game**: `Packs` (scripts/core/packs.gd) is the FIRST autoload. In `_init` it finds base.pck (beside the
+  game; on a Mac beside the app; in Crossroads Data; beside the program) and opens it with
+  `load_resource_pack(path, false)`: the game pack wins. No base, an older base than `pack_info.base`, or a file of
+  the wrong size: scripts/ui/packs_notice.gd stands in place of the menu and says which Base to get and where to
+  put it. `Packs.has(path)` is ResourceLoader.exists minus the files removed from the game since the base (they are
+  still inside base.pck): Voices.has and the bundled-model lookups in Avatars use it. Use it for any new "is this
+  voice or model there" check.
+- **Shipping**: `tools/dev/make_release.sh <out dir>` = the update (Crossroads-X-windows-update.zip: Crossroads.pck,
+  plus the exe / dll only when they differ from what the base shipped with; Crossroads-X-mac.zip: the whole app,
+  small). `--base N` also makes Crossroads-BaseN.partK (base.pck + the whole Windows game) and rewrites the
+  manifest: COMMIT the manifest with it, every later update is measured against it.
+  Make a new base when the update has grown heavy (150 MB or so of new voices and models) or the engine changes.
+- **The brother's steps**: close the game, unzip the update into the game folder (where Crossroads.exe is), say yes
+  to replace, open the game. Mac: replace the app; base.pck sits in Crossroads Data (or beside the app).
+- **Tested** on a real Linux export (preset "Linux", only for this): base + game pack opens, a whole duel with
+  voices, the menu with its 3D figure; an update with a changed voice, a new voice, a new model, a changed model and
+  a removed voice on top of the OLD base (the new ones play, the removed one is left alone); no base, an older base
+  and a cut-off base each show the notice. NOT run: Windows and Mac themselves (no way to run them here).
+- /tmp/synctest.py used to delete build/ in the test copy (it took a fresh base.pck with it): fixed, copy kept in
+  tools/dev/synctest.py. `--packs-check=res://a;res://b` prints what a running build sees and quits.

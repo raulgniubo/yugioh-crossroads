@@ -41,7 +41,7 @@ func path_for(key: String) -> String:
 			return ""
 		var body := str(HeroLook.models(int(gl.get("look_body", 0)), int(gl.get("look_hair", 0)), int(gl.get("look_outfit", 0)))["body"])
 		var bundled := "res://assets/models/people/%s.glb" % body
-		return bundled if ResourceLoader.exists(bundled) else ""
+		return bundled if Packs.has(bundled) else ""
 	var own := own_file(key)
 	if own != "":
 		return own
@@ -49,7 +49,7 @@ func path_for(key: String) -> String:
 		if k == "":
 			continue
 		var bundled := "res://assets/models/people/%s.glb" % k
-		if ResourceLoader.exists(bundled):
+		if Packs.has(bundled):
 			return bundled
 	return ""
 
@@ -123,7 +123,7 @@ func takes_jacket(key: String) -> bool:
 ## True when this character is shown with a stand-in, not their own model.
 func is_standin(key: String) -> bool:
 	return key != "player" and own_file(key) == "" and STANDINS.has(key) \
-			and not ResourceLoader.exists("res://assets/models/people/%s.glb" % key)
+			and not Packs.has("res://assets/models/people/%s.glb" % key)
 
 
 func has_avatar(key: String) -> bool:

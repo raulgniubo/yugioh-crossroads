@@ -213,7 +213,7 @@ static func length(who: String, text: String, mine := true) -> float:
 
 
 static func has(voice: String, key: String) -> bool:
-	return voice != "" and ResourceLoader.exists(path_of(voice, key))
+	return voice != "" and Packs.has(path_of(voice, key))
 
 
 ## Nobody speaks while this is on (a replay running faster than life: the lines would trail behind it).
