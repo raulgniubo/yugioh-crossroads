@@ -412,7 +412,7 @@ func spin() -> void:
 func at_rest() -> bool:
 	if _lids < 1.0 or _glitch > 0.0 or _talk > 0.0:
 		return false
-	if _ring and is_inside_tree():
+	if _ring and is_inside_tree() and not picture:      # (in a picture the cards never pass in front)
 		for holder in _ring.get_children():
 			for card in (holder as Node3D).get_children():
 				var p: Vector3 = (card as Node3D).global_position - global_position
@@ -536,6 +536,22 @@ func _process(delta: float) -> void:
 # ------------------------------------------------------------------ her picture
 
 static var _vp: SubViewport
+static var _her: LumenSpirit      # the one in the picture everybody shares
+
+
+## True when every picture of her is at a good moment to be kept still (eyes open, not talking, no
+## tear running through her). A card's face is a picture OF her picture: it asks this before it
+## stops redrawing, or it could keep her mid-blink for good.
+static func pictures_still() -> bool:
+	if _her != null and is_instance_valid(_her) and not _her.at_rest():
+		return false
+	for f in _form_vps:
+		var fv = _form_vps[f]
+		if is_instance_valid(fv):
+			for n in (fv as Node).get_children():
+				if n is LumenSpirit and not (n as LumenSpirit).at_rest():
+					return false
+	return true
 static var _awake_until := 0.0
 
 
@@ -667,6 +683,7 @@ static func portrait(host: Node) -> Texture2D:
 	l.size = 1.0
 	l.rotation.y = 0.28
 	l.picture = true
+	_her = l
 	_vp.add_child(l)
 	var cam := Camera3D.new()
 	cam.fov = 30.0

@@ -1843,3 +1843,12 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
   - In Spanish the card says what it does in Spanish (CardText.shown) and its kinds too ("Hada / Sincronía /
     Efecto", "CONTRATRAMPA", "MÁGICA DE VELOCIDAD"). Changing the language clears the face cache.
   - All 44 originals (22 of Lumen's, 22 Speed Spells) checked on sheets in Spanish: every one has its text and it fits.
+- **0.82.4** (Nov 27, Raul on the frame: "un poco opaco", "moderna y bonita", then, showing the first dark cards,
+  "tenían mejor contraste y color estas"): the card is its kind's color in full, bright tones (spell 0fbf7c, trap
+  e0268f, effect f58a1f, fusion 9a45ee, ritual 2b7dff, xyz 2b2a55, synchro white), and the text sits as on the
+  first cards: WHITE on a deep plate, gold kinds and gold ATK/DEF. The name plate and the ATK plate run from deep
+  into the card's color; a soft glow of the color round the picture; a breath of rainbow in the sheen.
+  `pale` is the Synchro only (orange once counted as pale by its luminance and got slate plates).
+  LESSON: he likes dark plates + white/gold lettering + strong color. No pale plates with dark lettering.
+- Cards with Lumen on them stop redrawing only when she holds still with her eyes open
+  (card_db._hold_when_still, LumenSpirit.pictures_still): a face frozen two seconds in could keep her mid-blink.

@@ -734,9 +734,7 @@ func _make_placeholder_face(id: int) -> Texture2D:
 		# Draw for a moment (her picture needs a few frames to exist), then hold still.
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 		LumenSpirit.wake(2.5)
-		get_tree().create_timer(2.0).timeout.connect(func():
-			if is_instance_valid(vp):
-				vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+		get_tree().create_timer(2.0).timeout.connect(_hold_when_still.bind(vp, 0))
 	var initials := ""
 	for word in str(d.get("name", "?")).split(" ", false):
 		if initials.length() < 2 and word.length() > 0 and word[0] == word[0].to_upper():
@@ -819,15 +817,16 @@ func _make_original_face(id: int) -> Texture2D:
 	# (0.82.3, Raul: "they look kinda plain") The color is a worked surface now (see FRAME_GLSL):
 	# a woven pattern, light running across it, a deeper edge; with gold corner pieces, a cut name
 	# plate, a jewel for the Attribute, a ribbon for the stars and a plate for ATK and DEF.
-	var tone: Color = {"spell": Color("149a6c"), "trap": Color("b52a7c"), "effect": Color("cf7a30"), "fusion": Color("8249bd"),
-			"synchro": Color("e3e7ee"), "xyz": Color("2a2c42"), "ritual": Color("3873d6")}.get(ftype, Color("c79a55"))
-	var pale := tone.get_luminance() > 0.6          # (the Synchro's white: dark lettering on the card itself)
+	# (Bright, full colors: Raul found the first set "un poco opaco".)
+	var tone: Color = {"spell": Color("0fbf7c"), "trap": Color("e0268f"), "effect": Color("f58a1f"), "fusion": Color("9a45ee"),
+			"synchro": Color("eef1f6"), "xyz": Color("2b2a55"), "ritual": Color("2b7dff")}.get(ftype, Color("e0a84a"))
+	var pale := ftype == "synchro"          # (the Synchro's white is the one pale card: its plates are slate, not its color darkened)
 	var gold := Color("ffd766")
 	var gold_deep := Color("9a6a12")
 	var ink := Color("0b1322")
-	var deep := tone.darkened(0.64) if not pale else Color("39404e")
+	var deep := tone.darkened(0.66) if not pale else Color("39404e")
 	if ftype == "xyz":
-		deep = Color("11121f")
+		deep = Color("100f24")
 	_rect(root, Vector2.ZERO, Vector2(CARD_SIZE), Color("05080f"))
 	# The card itself.
 	var body_rect := ColorRect.new()
@@ -849,7 +848,7 @@ func _make_original_face(id: int) -> Texture2D:
 	var plate_n := Control.new()
 	plate_n.position = Vector2(22, 22)
 	plate_n.size = Vector2(376, 54)
-	plate_n.draw.connect(_draw_name_plate.bind(plate_n, deep, gold, gold_deep))
+	plate_n.draw.connect(_draw_name_plate.bind(plate_n, deep, gold, gold_deep, tone if not pale else Color("8fa3c8")))
 	root.add_child(plate_n)
 	var nm := str(d.get("name", ""))
 	var name_l := _label(root, nm, Vector2(38, 24), Vector2(300, 50), _font_title, 30 if nm.length() <= 20 else (24 if nm.length() <= 25 else 20), Color.WHITE)
@@ -887,7 +886,10 @@ func _make_original_face(id: int) -> Texture2D:
 		_label(root, "★".repeat(n), Vector2(34, 80), Vector2(352, 30), _font_title, 23, Color("ffe27a") if not left else Color("cdbdff"),
 				HORIZONTAL_ALIGNMENT_LEFT if left else HORIZONTAL_ALIGNMENT_RIGHT)
 	# The picture: sunk into the card, in a gold frame with a bright inner line and corner pieces.
-	_rect(root, Vector2(36, 108), Vector2(348, 320), Color(0, 0, 0, 0.34), 7)
+	var halo := tone.lightened(0.55) if not pale else Color("9fc4ff")
+	for g in 5:
+		_edge(root, Vector2(36 - g * 2, 108 - g * 2), Vector2(348 + g * 4, 320 + g * 4), Color(halo, 0.16 - g * 0.028), 3, 7 + g * 2)
+	_rect(root, Vector2(36, 108), Vector2(348, 320), Color(0, 0, 0, 0.3), 7)
 	_edge(root, Vector2(39, 111), Vector2(342, 314), gold_deep, 2, 5)
 	_edge(root, Vector2(41, 113), Vector2(338, 310), gold, 3, 4, Color.BLACK)
 	var art_box := Control.new()
@@ -902,17 +904,13 @@ func _make_original_face(id: int) -> Texture2D:
 		# Draw for a moment (her picture needs a few frames to exist), then hold still.
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 		LumenSpirit.wake(2.5)
-		get_tree().create_timer(2.0).timeout.connect(func():
-			if is_instance_valid(vp):
-				vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+		get_tree().create_timer(2.0).timeout.connect(_hold_when_still.bind(vp, 0))
 	elif EchoArt.has(id):
 		# (0.81.0) The Echo cards: drawn in EchoArt. Lumen is on some of them, and needs a moment.
 		if EchoArt.build(art_box, id, self):
 			vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 			LumenSpirit.wake(2.5)
-			get_tree().create_timer(2.0).timeout.connect(func():
-				if is_instance_valid(vp):
-					vp.render_target_update_mode = SubViewport.UPDATE_DISABLED)
+			get_tree().create_timer(2.0).timeout.connect(_hold_when_still.bind(vp, 0))
 	else:
 		_speed_art(art_box, id)
 	_edge(root, Vector2(45, 117), Vector2(330, 302), Color(1, 1, 1, 0.22), 1, 2)
@@ -923,22 +921,23 @@ func _make_original_face(id: int) -> Texture2D:
 	caps.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	caps.draw.connect(_draw_corner_caps.bind(caps, gold, gold_deep))
 	root.add_child(caps)
-	# What it does: on a light plate tinted with the card's color, in dark lettering.
-	var plate := tone.lerp(Color("f8f2e2"), 0.86) if not pale else Color("f1f3f8")
-	if ftype == "xyz":
-		plate = Color("dcdcea")
-	var dark := deep.darkened(0.2)
-	_rect(root, Vector2(22, 428), Vector2(376, 166), Color(0, 0, 0, 0.36), 9)
+	# What it does: white lettering on a deep plate that keeps a breath of the card's color, gold for
+	# the kinds and the numbers. (0.82.4, Raul: the first cards, dark with white and gold, "tenían
+	# mejor contraste y color" than a pale plate with dark lettering. The card round it stays in
+	# full color.)
+	var paper := Color("f2f5fb")
+	var plate := Color("070b16").lerp(tone if not pale else Color("6f86b8"), 0.16)
+	var line := (tone.lightened(0.35) if not pale else Color("b9cdf5"))
+	_rect(root, Vector2(22, 428), Vector2(376, 166), Color(0, 0, 0, 0.4), 9)
 	_edge(root, Vector2(24, 430), Vector2(372, 162), gold_deep, 2, 8)
 	_edge(root, Vector2(26, 432), Vector2(368, 158), gold, 2, 6, plate)
-	_fill(root, Vector2(29, 435), Vector2(362, 70), Color(1, 1, 1, 0.5), Color(1, 1, 1, 0.0))
-	_fill(root, Vector2(29, 530), Vector2(362, 57), Color(tone.darkened(0.3), 0.0), Color(tone.darkened(0.3), 0.16))
-	_edge(root, Vector2(30, 436), Vector2(360, 150), Color(dark, 0.3), 1, 4)
+	_fill(root, Vector2(29, 435), Vector2(362, 60), Color(1, 1, 1, 0.07), Color(1, 1, 1, 0.0))
+	_edge(root, Vector2(30, 436), Vector2(360, 150), Color(line, 0.45), 1, 4)
 	# (In Spanish the card says what it does in Spanish: the same text the card list shows.)
 	var body: String = CardText.shown(str(d.get("name", "")), str(d.get("text", "")))
 	if is_spell:
 		var bl := body.length()
-		var desc := _label(root, body, Vector2(40, 442), Vector2(340, 138), _font_body, 19 if bl <= 110 else (16 if bl <= 180 else (14 if bl <= 250 else 12)), ink)
+		var desc := _label(root, body, Vector2(40, 442), Vector2(340, 138), _font_body, 19 if bl <= 110 else (16 if bl <= 180 else (14 if bl <= 250 else 12)), paper)
 		desc.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -950,15 +949,15 @@ func _make_original_face(id: int) -> Texture2D:
 		if d.get("tuner", false):
 			kinds.append(tr("Tuner"))
 		kinds.append(tr("Effect"))
-		var kl := _label(root, "[ %s ]" % " / ".join(kinds), Vector2(40, 437), Vector2(340, 28), _font_title, 20, dark)
+		var kl := _label(root, "[ %s ]" % " / ".join(kinds), Vector2(40, 437), Vector2(340, 28), _font_title, 20, gold)
 		kl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		var rule := Control.new()
 		rule.position = Vector2(40, 464)
 		rule.size = Vector2(340, 6)
-		rule.draw.connect(_draw_rule.bind(rule, Color(dark, 0.55)))
+		rule.draw.connect(_draw_rule.bind(rule, Color(gold, 0.6)))
 		root.add_child(rule)
 		var bl2 := body.length()
-		var fx_text := _label(root, body, Vector2(40, 470), Vector2(340, 78), _font_body, 12 if bl2 <= 170 else (10 if bl2 <= 260 else 9), ink)
+		var fx_text := _label(root, body, Vector2(40, 470), Vector2(340, 78), _font_body, 12 if bl2 <= 170 else (10 if bl2 <= 260 else 9), paper)
 		fx_text.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		fx_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		fx_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -967,10 +966,10 @@ func _make_original_face(id: int) -> Texture2D:
 		var stat := Control.new()
 		stat.position = Vector2(126, 551)
 		stat.size = Vector2(260, 34)
-		stat.draw.connect(_draw_stat_plate.bind(stat, deep, gold, gold_deep))
+		stat.draw.connect(_draw_stat_plate.bind(stat, deep, gold, gold_deep, tone if not pale else Color("8fa3c8")))
 		root.add_child(stat)
 		var sl := _label(root, "ATK/%d   DEF/%d" % [d.get("atk", 0), d.get("def", 0)], Vector2(140, 550), Vector2(246, 36),
-				_font_title, 25, Color("ffe9a8"), HORIZONTAL_ALIGNMENT_CENTER)
+				_font_title, 25, gold, HORIZONTAL_ALIGNMENT_CENTER)
 		sl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	return vp.get_texture()
 
@@ -1015,21 +1014,27 @@ float pattern(vec2 px) {
 }
 void fragment() {
 	vec2 px = UV * vec2(406.0, 598.0);
-	vec3 hi = mix(tone.rgb, vec3(1.0), mix(0.30, 0.75, pale));
-	vec3 lo = tone.rgb * mix(0.50, 0.70, pale);
+	// Bright at the top, the full color through the middle, a little deeper at the foot: never grey.
+	vec3 hi = mix(tone.rgb * 1.12 + 0.06, vec3(1.0), mix(0.04, 0.75, pale));
+	vec3 lo = tone.rgb * mix(0.50, 0.66, pale);
 	float t = clamp(UV.y * 0.86 + UV.x * 0.14, 0.0, 1.0);
-	vec3 col = mix(hi, lo, smoothstep(0.0, 1.0, t));
-	col += mix(0.14, 0.06, pale) * (1.0 - smoothstep(0.0, 0.85, distance(UV, vec2(0.18, 0.04))));
+	vec3 col = mix(hi, tone.rgb, smoothstep(0.0, 0.45, t));
+	col = mix(col, lo, smoothstep(0.45, 1.0, t));
+	col += mix(0.16, 0.06, pale) * (1.0 - smoothstep(0.0, 0.8, distance(UV, vec2(0.18, 0.04))));
 	float w = clamp(pattern(px), 0.0, 1.5);
-	col += w * mix(vec3(0.085), vec3(-0.09, -0.08, -0.05), pale);
+	col += w * mix(vec3(0.10), vec3(-0.09, -0.08, -0.05), pale);
 	float s = UV.x * 0.9 + UV.y * 0.55;
 	float band = exp(-pow((s - 0.40) / 0.075, 2.0)) + 0.55 * exp(-pow((s - 0.98) / 0.05, 2.0));
-	col += band * mix(vec3(0.17), vec3(0.10, 0.12, 0.2) * -0.55, pale);
-	col += (noise(vec2(px.x * 0.06, px.y * 1.7)) - 0.5) * 0.04;
-	col += (noise(px * 1.1) - 0.5) * 0.03;
+	col += band * mix(vec3(0.20), vec3(0.10, 0.12, 0.2) * -0.55, pale);
+	col += band * 0.10 * (0.5 + 0.5 * cos(6.2832 * (s * 2.2 + vec3(0.0, 0.33, 0.67)))) * mix(1.0, 0.7, pale);
+	col += (noise(vec2(px.x * 0.06, px.y * 1.7)) - 0.5) * 0.03;
+	col += (noise(px * 1.1) - 0.5) * 0.02;
 	vec2 q = (UV - 0.5) * vec2(1.0, 1.12);
-	col *= 1.0 - mix(0.42, 0.2, pale) * smoothstep(0.34, 0.80, length(q));
-	COLOR = vec4(col, 1.0);
+	col *= 1.0 - mix(0.30, 0.16, pale) * smoothstep(0.38, 0.82, length(q));
+	// Fuller color.
+	float luma = dot(col, vec3(0.299, 0.587, 0.114));
+	col = mix(vec3(luma), col, mix(1.22, 1.0, pale));
+	COLOR = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 """
 var _frame_sh: Shader
@@ -1042,20 +1047,44 @@ func _frame_shader() -> Shader:
 	return _frame_sh
 
 
-## The name's plate: cut corners, darker toward the foot, a gloss across its top half, gold round it.
-func _draw_name_plate(c: Control, deep: Color, gold: Color, gold_deep: Color) -> void:
+## A card with Lumen on it stops redrawing once she holds still with her eyes open (it used to stop
+## two seconds in, whatever she was doing: now and then that was mid-blink, and the card kept it).
+func _hold_when_still(vp: SubViewport, tries: int) -> void:
+	if not is_instance_valid(vp):
+		return
+	if tries < 60 and not LumenSpirit.pictures_still():
+		get_tree().create_timer(0.1).timeout.connect(_hold_when_still.bind(vp, tries + 1))
+		return
+	# Two more frames, so the card has drawn her as she is now; then once more, in case she blinked.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not is_instance_valid(vp):
+		return
+	if tries < 60 and not LumenSpirit.pictures_still():
+		get_tree().create_timer(0.1).timeout.connect(_hold_when_still.bind(vp, tries + 1))
+		return
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+
+
+## The name's plate: cut corners, deep on the left and running into the card's own color on the
+## right, a band of glass across its top half, a fine bright line inside the gold.
+func _draw_name_plate(c: Control, deep: Color, gold: Color, gold_deep: Color, glow: Color) -> void:
 	var w := c.size.x
 	var h := c.size.y
 	var k := 9.0
 	var pts := PackedVector2Array([Vector2(k, 0), Vector2(w - k, 0), Vector2(w, k), Vector2(w, h - k), Vector2(w - k, h), Vector2(k, h), Vector2(0, h - k), Vector2(0, k)])
-	var top := deep.lightened(0.2)
-	var foot := deep.darkened(0.35)
-	c.draw_polygon(pts, PackedColorArray([top, top, top, foot, foot, foot, foot, top]))
-	c.draw_colored_polygon(PackedVector2Array([Vector2(k, 2), Vector2(w - k, 2), Vector2(w - 2, k), Vector2(w - 2, h * 0.46), Vector2(2, h * 0.46), Vector2(2, k)]), Color(1, 1, 1, 0.09))
+	var l_top := deep.lerp(glow, 0.3)
+	var l_foot := deep.lerp(glow, 0.08)
+	var r_top := deep.lerp(glow, 0.8)
+	var r_foot := deep.lerp(glow, 0.45)
+	c.draw_polygon(pts, PackedColorArray([l_top, r_top, r_top, r_foot, r_foot, l_foot, l_foot, l_top]))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(k, 3), Vector2(w - k, 3), Vector2(w - 3, k), Vector2(w - 3, h * 0.45), Vector2(3, h * 0.45), Vector2(3, k)]), Color(1, 1, 1, 0.13))
 	var ring := pts.duplicate()
 	ring.append(pts[0])
 	c.draw_polyline(ring, gold_deep, 4.0, true)
 	c.draw_polyline(ring, gold, 2.0, true)
+	var inner := PackedVector2Array([Vector2(k + 1, 3), Vector2(w - k - 1, 3), Vector2(w - 3, k + 1), Vector2(w - 3, h - k - 1), Vector2(w - k - 1, h - 3), Vector2(k + 1, h - 3), Vector2(3, h - k - 1), Vector2(3, k + 1), Vector2(k + 1, 3)])
+	c.draw_polyline(inner, Color(1, 1, 1, 0.28), 1.0, true)
 
 
 ## The Attribute's jewel: a gold ring, the color lit from above, a gloss on its upper left.
@@ -1115,14 +1144,18 @@ func _draw_rule(c: Control, col: Color) -> void:
 	c.draw_colored_polygon(PackedVector2Array([Vector2(w / 2.0, y - 4), Vector2(w / 2.0 + 5, y), Vector2(w / 2.0, y + 4), Vector2(w / 2.0 - 5, y)]), col)
 
 
-## ATK and DEF sit on a plate of their own, cut on a slant at its left end.
-func _draw_stat_plate(c: Control, deep: Color, gold: Color, gold_deep: Color) -> void:
+## ATK and DEF sit on a plate of their own, cut on a slant at its left end: the card's color on
+## the left, running deep to the right.
+func _draw_stat_plate(c: Control, deep: Color, gold: Color, gold_deep: Color, glow: Color) -> void:
 	var w := c.size.x
 	var h := c.size.y
 	var pts := PackedVector2Array([Vector2(16, 0), Vector2(w - 5, 0), Vector2(w, 5), Vector2(w, h - 5), Vector2(w - 5, h), Vector2(0, h)])
-	var top := deep.lightened(0.14)
-	var foot := deep.darkened(0.35)
-	c.draw_polygon(pts, PackedColorArray([top, top, top, foot, foot, foot]))
+	var l_top := deep.lerp(glow, 0.4)
+	var l_foot := deep.lerp(glow, 0.2)
+	var r_top := deep.darkened(0.1)
+	var r_foot := deep.darkened(0.5)
+	c.draw_polygon(pts, PackedColorArray([l_top, r_top, r_top, r_foot, r_foot, l_foot]))
+	c.draw_colored_polygon(PackedVector2Array([Vector2(17, 2), Vector2(w - 5, 2), Vector2(w - 2, 5), Vector2(w - 2, h * 0.45), Vector2(9, h * 0.45)]), Color(1, 1, 1, 0.1))
 	var ring := pts.duplicate()
 	ring.append(pts[0])
 	c.draw_polyline(ring, gold_deep, 3.0, true)
