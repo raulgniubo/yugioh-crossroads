@@ -314,20 +314,23 @@ vec3 ground_color(vec2 p, int kind, float t) {
 		return g + vec3(0.62, 0.2, 1.0) * arc * (0.7 + 0.3 * sin(t * 5.0 + n * 30.0)) + vec3(0.16, 0.03, 0.26) * smoothstep(0.4, 0.75, n);
 	}
 	if (kind == 24) {
-		// The Hall of Echoes (0.81.0): dark polished stone in big tiles with light in the seams,
-		// and rings of light going out from the middle one after another, each the echo of the last.
+		// The Hall of Echoes: dark polished stone in big tiles with light in the seams, and rings
+		// set into the floor round the middle, each fainter than the last (the echo of the first).
+		// (0.82.6, Raul: the rings used to travel outward without end, "gets annoying since it
+		// doesn't stop". They are part of the floor now and hold still; the light only breathes, slowly.)
 		vec2 f = abs(fract(p * 0.5) - 0.5);
 		float seam = smoothstep(0.465, 0.5, max(f.x, f.y));
 		vec3 stone = mix(vec3(0.015, 0.04, 0.085), vec3(0.04, 0.11, 0.19), g_fbm(p * 1.3));
 		stone *= 0.85 + 0.25 * g_hash(floor(p * 0.5));
 		float r = length(p);
 		float ring = 0.0;
-		for (int i = 0; i < 4; i++) {
-			float ph = fract(t * 0.14 + float(i) * 0.25);
-			ring += (1.0 - smoothstep(0.0, 0.2, abs(r - ph * 13.0))) * (1.0 - ph);
+		for (int i = 1; i <= 4; i++) {
+			ring += (1.0 - smoothstep(0.0, 0.07, abs(r - float(i) * 3.1))) * (1.0 - float(i) * 0.19);
 		}
-		vec3 c = stone + vec3(0.25, 0.85, 1.0) * seam * (0.16 + 0.5 * ring);
-		return c + vec3(0.3, 0.9, 1.0) * ring * 0.42;
+		float breath = 0.92 + 0.08 * sin(t * 0.5);
+		float near = 1.0 - smoothstep(0.0, 13.0, r);
+		vec3 c = stone + vec3(0.25, 0.85, 1.0) * seam * (0.16 + 0.22 * near) * breath;
+		return c + vec3(0.3, 0.9, 1.0) * ring * 0.26 * breath;
 	}
 	if (kind == 23) {
 		// A town of gears: brushed brass plates bolted down, and round wells in them where big

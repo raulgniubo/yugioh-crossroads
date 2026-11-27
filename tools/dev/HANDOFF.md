@@ -1859,3 +1859,8 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
   Kept from today: the cards' text and kinds in Spanish when the game is in Spanish, no card across Lumen's eye,
   no card frozen mid-blink, and everything of 0.82.2 that is not the frame (Echo Pack with every card, "Where to
   find it", the deck editor's line under the big picture).
+- **0.82.6** (Nov 27): Hall of Echoes' floor holds still (surface 24: the rings are set into the floor, the light
+  only breathes; Raul: the travelling rings "gets annoying since it doesn't stop"). The blank cards stay behind
+  Lumen beside your duelist too (LumenSpirit.floating sets `picture`). Deck shop: "See all N cards" is the whole
+  deck (40), not its different cards (24). Raul asked for ideas for duel animations: a list was given, nothing
+  started. He likes: white/gold on dark, calm fields, things that stop.

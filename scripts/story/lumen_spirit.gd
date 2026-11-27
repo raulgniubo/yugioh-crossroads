@@ -643,6 +643,7 @@ static func floating(host: Node, px := 300) -> Array:
 	var l := LumenSpirit.new()
 	l.size = 1.0
 	l.rotation.y = 0.35
+	l.picture = true      # (beside your duelist too: a blank card kept crossing her face)
 	vp.add_child(l)
 	var cam := Camera3D.new()
 	cam.fov = 30.0
