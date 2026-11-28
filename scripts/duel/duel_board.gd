@@ -2030,6 +2030,35 @@ func _ring_fx(at: Vector3, color: Color, size: float, delay: float, rise: float)
 
 
 ## The lights go down for a big summon and come back.
+var _shade_until := 0
+
+
+## (0.86.0) The table goes dark for a moment under a big effect, so the effect's own colors show (on
+## a pale table everything added to it came out white). Quick in, quick out; two at once do not stack.
+func shade(dur: float, depth := 0.5) -> void:
+	var now := Time.get_ticks_msec()
+	if now < _shade_until:
+		return
+	_shade_until = now + int((dur + 0.35) * 1000.0)
+	var veil := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(60, 60)
+	veil.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(0, 0, 0.03, 0.0)
+	veil.material_override = m
+	veil.rotation.x = -PI / 2.0
+	veil.position = Vector3(0, 0.018, 0)
+	add_child(veil)
+	var tw := create_tween()
+	tw.tween_property(m, "albedo_color:a", depth, Settings.t(0.1))
+	tw.tween_interval(Settings.t(dur))
+	tw.tween_property(m, "albedo_color:a", 0.0, Settings.t(0.3))
+	tw.tween_callback(veil.queue_free)
+
+
 func _dim_field(dur: float) -> void:
 	var veil := MeshInstance3D.new()
 	var q := QuadMesh.new()
@@ -2041,7 +2070,7 @@ func _dim_field(dur: float) -> void:
 	m.albedo_color = Color(0, 0, 0.03, 0.0)
 	veil.material_override = m
 	veil.rotation.x = -PI / 2.0
-	veil.position = Vector3(0, 0.012, 0)
+	veil.position = Vector3(0, 0.018, 0)      # (0.86.0: at 0.012 it lay under the table and never showed)
 	add_child(veil)
 	var tw := create_tween()
 	tw.tween_property(m, "albedo_color:a", 0.62, Settings.t(0.3))
@@ -2217,6 +2246,8 @@ func _consume_orbs(at: Vector3) -> void:
 		return
 	var n := _orbs.size()
 	var k := clampf(float(n), 1.0, 3.0)
+	if n >= 2:
+		shade(0.9, 0.45)
 	var main: Color = _orb_cols[0] if not _orb_cols.is_empty() else UITheme.GOLD
 	var floor_at := Vector3(at.x, 0.03, at.z)
 	DuelFx.glyph(self, floor_at, main, 0.8 + 0.2 * k, 0.85, {"rings": int(k), "ticks": 24, "star": 0, "turn": 2.4})

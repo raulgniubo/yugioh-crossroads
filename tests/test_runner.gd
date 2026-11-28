@@ -12043,6 +12043,16 @@ func _test_085() -> void:
 		if whole_db:
 			check(CardData.NAME_TO_ID.has(str(nm)), "%s (a named attack) is a card of the game" % nm)
 	check(SigFx.ATTACKS.size() >= 45 and used.size() == shapes.size(), "45 monsters or more have an attack of their own, in all ten shapes (%d)" % SigFx.ATTACKS.size())
+	# (0.86.0) Every ace with an entrance has an attack of its own, in a shape the table can draw.
+	var lacking := 0
+	for ace in SummonShow.SIGNATURE:
+		var fi := _FakeInst.new()
+		fi.data = {"name": str(ace), "atk": 2500, "attribute": "DARK"}
+		var lk2: Array = SigFx._look(fi)
+		if lk2.size() != 5 or not shapes.has(str(lk2[0])):
+			lacking += 1
+	check(lacking == 0, "every ace with an entrance has an attack of its own (%d without)" % lacking)
+	check(FileAccess.get_file_as_string("res://scripts/duel/duel_board.gd").contains("func shade(") and FileAccess.get_file_as_string("res://scripts/duel/sig_fx.gd").contains("board.shade("), "the table goes dark for a moment under the big effects")
 	for aimed in ["Effect Veiler", "Shrink", "Raigeki Break", "Phoenix Wing Wind Blast", "Offerings to the Doomed"]:
 		check(StrikeFx.aims(aimed), "%s has its look on the card it targets" % aimed)
 	var sfx_src := FileAccess.get_file_as_string("res://scripts/duel/strike_fx.gd")
@@ -12103,3 +12113,7 @@ class _FakeScene:
 	var state
 	var hud
 	var ocg = null
+
+
+class _FakeInst:
+	var data := {}

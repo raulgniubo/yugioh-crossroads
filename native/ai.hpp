@@ -797,7 +797,7 @@ static Level level_of(int level) {
 	case 1: lv = { 2, 6, 700, 2, 0.20, 31, 90.0, 1, 0.0, 2, 0, 0 }; if(!g_base) { lv.worlds = 1; lv.cap = 5; lv.horizon = 1; lv.slip = 0.0; lv.noise = 60.0; } break;      // Easy
 	case 2: lv = { 6, 10, 1600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 0, 350 }; break;                                                               // Normal
 	// (Tried and dropped: Normal looking three turns ahead. In mirror matches it did no better than two.)
-	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3, 900 }; if(!g_base) { lv.deal = 63; lv.cap = 16; } break;                  // Hard
+	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3, 900 }; if(!g_base) { lv.deal = 63; lv.cap = 16; lv.horizon = 3; lv.deep = 4; } break;                  // Hard
 	// (Tried for Hard and NOT shipped: three turns ahead with a second look at 4 answers. It won 17 of 24
 	// mirror duels against Normal, but it failed two boards: it would not attack a weaker monster and it
 	// Set a Raigeki with nothing to hit. The second look takes max(value, best next) and so undoes the
@@ -1097,7 +1097,8 @@ static int cs_command(Sim& s, const Board& b, const JV& m, const std::vector<uin
 				int seq = (int)e.geti("seq");
 				if(seq < 0 || seq > 6) continue;
 				int power = b.m[p][seq].atk;
-				for(auto& f : b.m[op]) if(f.there && (f.pos & 0x5) && power > ((f.pos & 0x1) ? f.atk : f.def)) return CS_MISSED_HIT;
+				for(auto& f : b.m[op]) if(f.there && (f.pos & 0x5) && power > ((f.pos & 0x1) ? f.atk : f.def))
+					return (!g_base && b.st_set[op] == 0) ? CS_SKIP_BP : CS_MISSED_HIT;      // (0.86.0: with no Set card across, it is simply given away)
 			}
 		}
 		if((v & 0xffff) == 1) {
@@ -1352,13 +1353,14 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 	}
 	// (0.76.0) Common sense: the answers no duelist gives are out, whatever the tries said.
 	std::vector<int> veto(N, 0);
+	std::vector<double> pen(N, 0.0);      // (0.86.0) what common sense took off an answer: the second look keeps it off
 	if(!g_base) {
 		veto = cs_veto(h, lv, seed, *root, m, cands);
 		bool any_ok = false;
 		for(size_t c = 0; c < N; ++c) if(!(veto[c] & ~CS_SOFT)) any_ok = true;
 		if(!any_ok) std::fill(veto.begin(), veto.end(), 0);
 		for(size_t c = 0; c < N; ++c) {
-			if(veto[c] && !(veto[c] & ~CS_SOFT)) { value[c] -= (veto[c] & CS_RISKY) ? 800 : ((veto[c] & CS_MISSED_HIT) ? 700 : 450); out.vetoed |= veto[c]; veto[c] = 0; continue; }
+			if(veto[c] && !(veto[c] & ~CS_SOFT)) { pen[c] = (veto[c] & CS_RISKY) ? 800 : ((veto[c] & CS_MISSED_HIT) ? 700 : 450); value[c] -= pen[c]; out.vetoed |= veto[c]; veto[c] = 0; continue; }
 			veto[c] &= ~CS_SOFT;
 			if(veto[c]) { value[c] = -1e18; out.vetoed |= veto[c]; }
 		}
@@ -1397,7 +1399,13 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 				}
 				if(n) best2 = std::max(best2, sum / n);
 			}
-			if(best2 > -1e17 && !veto[a]) value[a] = std::max(value[a], best2 + (passive.count(cands[a].key) ? 0.0 : lv.bias));
+			// (0.86.0) What the second look may add is capped: its lines are the best of several, the first
+			// look's are one each, so left alone it over-rates whatever it looks at twice (it valued a
+			// Raigeki Set with nothing to hit 2000 over ending the turn). And the soft penalties stay on.
+			if(best2 > -1e17 && !veto[a] && pen[a] <= 0) {      // (an answer common sense marked down gets nothing from a second look)
+				double raw = value[a] + pen[a];
+				value[a] = std::min(std::max(raw, best2 + (passive.count(cands[a].key) ? 0.0 : lv.bias)), raw + 600.0) - pen[a];
+			}
 		}
 	}
 	out.sims += sims.load();

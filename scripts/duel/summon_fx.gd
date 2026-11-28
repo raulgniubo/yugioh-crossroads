@@ -201,14 +201,15 @@ static func _xyz(board, at: Vector3, core: Vector3, mats: Array) -> void:
 	# (0.85.0) The same lights come back out of the galaxy and climb round the place the monster
 	# will stand: they are its Xyz Materials, and its orbiting lights take over from them.
 	for i in starts.size():
-		var back := DuelFx.orb(board, at + Vector3(0, 0.15, 0), GOLD if i % 2 == 0 else VIOLET.lightened(0.2), 0.26)
+		var back := DuelFx.orb(board, at + Vector3(0, 0.15, 0), GOLD if i % 2 == 0 else VIOLET.lightened(0.2), 0.42)
 		var b0 := float(i) * DuelFx.TAU_F / float(starts.size())
 		var bt: Tween = board.create_tween()
+		bt.tween_interval(Settings.t(0.35))      # (0.86.0: after the burst has cleared, or nobody sees them)
 		bt.tween_method(func(t: float):
 			if is_instance_valid(back):
 				var ang := b0 + t * DuelFx.TAU_F * 1.2
-				back.position = Vector3(at.x + cos(ang) * 0.75 * t, at.y + 0.15 + 0.75 * t, at.z + sin(ang) * 0.75 * t), 0.0, 1.0, Settings.t(0.6)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		bt.tween_interval(Settings.t(0.25))
+				back.position = Vector3(at.x + cos(ang) * 0.95 * t, at.y + 0.15 + 0.85 * t, at.z + sin(ang) * 0.95 * t), 0.0, 1.0, Settings.t(0.7)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		bt.tween_interval(Settings.t(0.4))
 		bt.tween_callback(back.pop.bind(0.5))
 	# The galaxy bursts.
 	DuelFx.glow(board, at + Vector3(0, 0.5, 0), Color(1.0, 0.95, 0.75), 2.8, 0.5, 1.0, 2.4)

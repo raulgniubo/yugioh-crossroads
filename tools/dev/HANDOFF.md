@@ -2007,3 +2007,26 @@ Raul left a list for the night: (1) the three levels play as well as each should
   (24 CPU duels over the rewritten decks ended with a winner and no refused answers).
 - The update zip now carries ocgbridge.windows.x86_64.dll (the engine changed): it must be extracted over the
   game folder like the .pck.
+
+## 0.86.0 (Nov 28 morning): Hard looked at again, the table shade, an attack for every ace, a first look at three worlds
+- **Hard** (Raul: "pon difícil más difícil"). Fixed in decide(): the second look took max(value, best next) and so
+  undid the soft common-sense penalties, and it over-rated whatever it looked at twice (a Raigeki Set at nothing
+  came out 2000 over ending the turn): now an answer that was marked down gets no second look, and what the
+  second look may add is capped at 600. cs_command: leaving a fight it wins with NO Set card across is a hard
+  mistake (was soft). Hard is now 3 turns ahead with a second look at 4; 52 of 52 boards at all three levels.
+  **Measured: 36 mirror duels Hard vs Normal = 19-17 (6-6, 8-4, 5-7). Hard is NOT measurably harder.** The 17-7
+  of the first trial was luck plus the over-rated second look. All levels share the same steady policy and
+  evaluation; more search adds little. What would really do it: card-specific play (lines per archetype), a
+  better opening for Hard (best of two hands: a hidden edge, Raul must agree), or Hard always on the strongest
+  deck version. Raul was told; waiting for his pick.
+- **board.shade(dur, depth)**: a dark veil over the table under big effects (named attacks, the set pieces,
+  2+ Tributes), so their colors show on a pale table. The veil must sit at y 0.018: at 0.011 / 0.012 it is UNDER
+  the table, which is why `_dim_field` (big summons) never showed either; fixed too.
+- **SigFx._look** falls back to SummonShow.SIGNATURE: every ace with an entrance has an attack (its two colors,
+  the shape that goes with its figure: FROM_FIGURE). Xyz: the returning lights start after the burst, bigger.
+- **Worlds, looked at only** (/tmp/tour.sh <district> <tag>: four free-camera shots where you arrive; nothing
+  changed): Academy looks the most finished (empty lawns and beach, flat water, plain sky); Satellite is the
+  weakest (one flat gray slab, junk piles of flat colored panels, nothing beyond the fence); New Domino has plain
+  gray towers, an empty highway and no wet look in the rain. Domino and Heartland not looked at.
+- Checks: test_runner 0 failures and replay check 3 of 3 (before the veil height changed, a constant); the shade
+  seen in one film (Torrential Tribute); the fallback attacks filmed without errors, frames caught their ends.

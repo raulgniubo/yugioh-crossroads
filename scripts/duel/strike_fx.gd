@@ -286,6 +286,8 @@ static func card(board: Node3D, card_name: String, p: int, ctx := {}) -> bool:
 		if n.contains(w):
 			_heal(board, p)
 			return true
+	if n == "raigeki" or n == "dark hole" or n.contains("lightning vortex"):
+		board.shade(0.8)
 	if n == "raigeki" or n.contains("lightning vortex") or n.contains("thunder"):
 		for z in 5:
 			var at: Vector3 = board.monster_zone_pos(o, z)
@@ -597,6 +599,7 @@ static func _tube(board: Node3D, at: Vector3, dir: Vector3, col: Color) -> Node3
 ## Magic Cylinder: two cylinders stand in the attack's way. It goes into the first, and comes out
 ## of the second straight at the duelist who sent it.
 static func _magic_cylinder(board: Node3D, p: int, attacker: Vector3) -> void:
+	board.shade(1.3)
 	var o := 1 - p
 	var pink := Color("ff4fc0")
 	var front := 0.55 if p == 1 else -0.55        # (toward the other side of the table)
@@ -662,6 +665,7 @@ static var _mirror_sh: Shader
 ## light runs across it, and it sends a blade of that light at every monster of theirs in Attack
 ## Position. Then it comes apart.
 static func _mirror_force(board: Node3D, p: int, attacker: Vector3) -> void:
+	board.shade(1.2)
 	var o := 1 - p
 	var gold := Color("ffe9a0")
 	var front := 0.72 if p == 1 else -0.72
@@ -732,6 +736,7 @@ static func _mirror_force(board: Node3D, p: int, attacker: Vector3) -> void:
 
 ## Torrential Tribute: a wall of water crosses the whole table and takes every monster with it.
 static func _torrent(board: Node3D) -> void:
+	board.shade(0.9)
 	var blue := Color("1f86ff")
 	var wave := MeshInstance3D.new()
 	var qm := QuadMesh.new()
@@ -772,6 +777,7 @@ static func _torrent(board: Node3D) -> void:
 ## Solemn Judgment (and Warning, and Strike): a light comes straight down on their side of the
 ## table and says no. Two bars of it cross, and it is over.
 static func _solemn(board: Node3D, o: int) -> void:
+	board.shade(0.8)
 	var gold := Color("ffe6a0")
 	var at: Vector3 = board.monster_zone_pos(o, 2)
 	at = Vector3(0, 0.03, at.z * 1.15)
@@ -805,6 +811,7 @@ static func _bottomless(board: Node3D, at: Vector3) -> void:
 
 ## Burst Stream of Destruction: one white breath that crosses their whole row from end to end.
 static func _burst_stream(board: Node3D, p: int) -> void:
+	board.shade(0.8)
 	var o := 1 - p
 	var white := Color("dff2ff")
 	var blue := Color("5ab8ff")
@@ -828,6 +835,7 @@ static func _burst_stream(board: Node3D, p: int) -> void:
 
 ## Dark Magic Attack: a wave of dark magic rolls over every Spell and Trap they have.
 static func _dark_magic_attack(board: Node3D, p: int) -> void:
+	board.shade(0.8)
 	var o := 1 - p
 	var violet := Color("b06bff")
 	var from: Vector3 = board.monster_zone_pos(p, 2) + Vector3(0, 1.2, 0)
@@ -883,6 +891,7 @@ static func _seat(p: int) -> Vector3:
 
 ## Harpie's Feather Duster, Heavy Storm, Giant Trunade, Cold Wave: the whole back row at once.
 static func _sweep_back(board: Node3D, p: int, kind: String) -> void:
+	board.shade(0.7)
 	var o := 1 - p
 	var sides: Array = [o] if kind == "duster" else [o, p]
 	var tree := board.get_tree()
@@ -920,6 +929,7 @@ static func _sweep_one(board: Node3D, kind: String, at: Vector3) -> void:
 
 ## Super Polymerization: a whirl opens over the middle of the table and pulls at both sides.
 static func _super_poly(board: Node3D) -> void:
+	board.shade(0.9)
 	var mid := Vector3(0, 1.4, 0)
 	board._vortex(mid, Color("b06bff"))
 	DuelFx.spiral(board, Vector3(0, 0.03, 0), Color("b06bff"), Color("3aa0ff"), 2.6, 1.1, {"twist": 6.0, "speed": 6.0})
@@ -955,6 +965,7 @@ static func _defusion(board: Node3D, p: int) -> void:
 
 ## Power Bond: the current doubles.
 static func _power_bond(board: Node3D, mine: Vector3) -> void:
+	board.shade(0.8)
 	var floor_at := Vector3(mine.x, 0.03, mine.z)
 	var blue := Color("5ad0ff")
 	DuelFx.glyph(board, floor_at, blue, 1.5, 1.0, {"star": 0, "rings": 2, "ticks": 36, "turn": 5.0})
@@ -987,6 +998,7 @@ static func _limiter(board: Node3D, p: int) -> void:
 
 ## Crush Card Virus and its kin: the infection runs along their row, then to their hand and their Deck.
 static func _virus(board: Node3D, o: int) -> void:
+	board.shade(0.9)
 	var sick := Color("9a3cff")
 	var tree := board.get_tree()
 	var spots: Array = []
@@ -1041,6 +1053,7 @@ static func _negate_attack(board: Node3D, p: int, attacker: Vector3) -> void:
 
 ## Threatening Roar: the sound itself crosses the table.
 static func _roar(board: Node3D, p: int) -> void:
+	board.shade(0.6)
 	var from := _seat(p) + Vector3(0, 1.0, 0)
 	var to := _seat(1 - p) + Vector3(0, 1.0, 0)
 	var dir := (to - from).normalized()
@@ -1053,6 +1066,7 @@ static func _roar(board: Node3D, p: int) -> void:
 
 ## Gravity Bind, Level Limit - Area B, Messenger of Peace: a weight comes down on every monster zone.
 static func _gravity(board: Node3D) -> void:
+	board.shade(0.8)
 	var heavy := Color("8a6bff")
 	DuelFx.glyph(board, Vector3(0, 0.03, 0), heavy, 4.0, 1.2, {"star": 0, "rings": 3, "ticks": 60, "turn": 0.8, "energy": 1.6})
 	for side in 2:
@@ -1078,6 +1092,7 @@ static func _scapegoat(board: Node3D, p: int) -> void:
 
 ## Card of Sanctity: light comes down on both duelists alike.
 static func _sanctity(board: Node3D) -> void:
+	board.shade(0.9)
 	var gold := Color("fff0b0")
 	for side in 2:
 		var seat := _seat(side)
@@ -1089,6 +1104,7 @@ static func _sanctity(board: Node3D) -> void:
 
 ## Skill Drain: what every monster on the table can do is drawn out of it.
 static func _skill_drain(board: Node3D, p: int) -> void:
+	board.shade(0.7)
 	var to: Vector3 = board.st_pos(p, 2) + Vector3(0, 0.5, 0)
 	var dim := Color("7a5cff")
 	for side in 2:
@@ -1118,6 +1134,7 @@ static func _seal(board: Node3D) -> void:
 
 ## Final Countdown: a clock face lights in the middle of the table and starts to turn.
 static func _countdown(board: Node3D) -> void:
+	board.shade(1.0)
 	var gold := Color("ffd76a")
 	var mid := Vector3(0, 0.03, 0)
 	DuelFx.glyph(board, mid, gold, 2.8, 1.5, {"star": 0, "rings": 2, "ticks": 20, "turn": 1.2, "energy": 2.2})

@@ -71,10 +71,33 @@ const ATTACKS := {
 const RAINBOW := ["ff4a4a", "ff9a3a", "ffe24d", "6dff8a", "4ad0ff", "5a6aff", "c06bff"]
 
 
+## (0.86.0) Every ace with an entrance of its own has an attack of its own too: the ones not in
+## ATTACKS get one from their entrance (SummonShow.SIGNATURE): its two colors, and the shape that
+## goes with its figure.
+const FROM_FIGURE := {"cards": "orb", "circle": "orb", "lightning": "thunder", "flames": "orb", "aurora": "sonic", "nova": "dive", "hex": "orb",
+	"rays": "stream", "stars": "sonic", "gears": "fist", "petals": "petals", "feathers": "sonic", "galaxy": "stream", "waves": "jaws",
+	"streaks": "slash", "wings": "stream", "slash": "slash", "runes": "thunder", "storm": "thunder", "bloom": "petals", "photon": "stream"}
+const COUNT := {"stream": 1, "orb": 1, "thunder": 2, "fist": 1, "slash": 2, "dive": 1, "sonic": 5, "petals": 1, "multi": 5, "jaws": 1}
+static var _made := {}
+
+
 static func _look(inst) -> Array:
 	if inst == null:
 		return []
-	return ATTACKS.get(str(inst.data.get("name", "")).to_lower(), [])
+	var nm := str(inst.data.get("name", ""))
+	var lk: Array = ATTACKS.get(nm.to_lower(), [])
+	if not lk.is_empty():
+		return lk
+	if _made.has(nm):
+		return _made[nm]
+	var out: Array = []
+	if SummonShow.SIGNATURE.has(nm):
+		var sg: Array = SummonShow.SIGNATURE[nm]
+		var shape := str(FROM_FIGURE.get(str(sg[2]), "orb"))
+		var cols := SummonShow.colors_of(inst.data)
+		out = [shape, (cols[0] as Color).to_html(false), (cols[1] as Color).to_html(false), 1.2 if SummonShow.is_boss(inst.data) else 1.0, int(COUNT.get(shape, 1))]
+	_made[nm] = out
+	return out
 
 
 static func has(inst) -> bool:
@@ -102,6 +125,7 @@ static func travel(board: Node3D, inst, from: Vector3, to: Vector3, dur: float) 
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, -1)
 	var side := dir.cross(Vector3.UP).normalized()
 	var tree := board.get_tree()
+	board.shade(0.6 + dur, 0.5)
 	match str(lk[0]):
 		"stream", "multi":
 			DuelFx.glow(board, mouth, a, 1.6 * size, 0.4, 0.8, 3.0)
