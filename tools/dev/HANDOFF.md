@@ -2030,3 +2030,41 @@ Raul left a list for the night: (1) the three levels play as well as each should
   gray towers, an empty highway and no wet look in the rain. Domino and Heartland not looked at.
 - Checks: test_runner 0 failures and replay check 3 of 3 (before the veil height changed, a constant); the shade
   seen in one film (Torrential Tribute); the fallback attacks filmed without errors, frames caught their ends.
+
+## 0.87.0 (Nov 28): real sound for the whole game (ElevenLabs), and Satellite rebuilt
+Raul approved the doc "Plan de sonido" and lifted the credit cap. How it all works: `tools/dev/sound/README.md`.
+- **Made**: 140 short sounds, 10 loops of air (30 s), 18 music tracks (2 x 110 s, 14 x 90 s, 2 x 20 s endings).
+  24,443 credits (sounds 475, air 1,000, music 22,800, sandbox 168); 111,282 left of 783,423 until about Dec 21.
+  Music costs 15 credits a second (the estimate call says double). 28 MB of ogg in `audio/`.
+- **In the game**: every name the game already played has a real file (`Sfx.bundled`); with no file the old tone
+  plays. New moments with a sound of their own: ace_enter / boss_enter (SummonShow), fate_draw, attack_stopped,
+  gone_<style> (anim_destroy), sig_<shape> (named attacks), st_<key> (32 Spell / Trap looks), notify (a toast that
+  comes with no other sound), purchase, deck_save, star_chip, unlock. The air of each place is a real loop through
+  the old `Sfx.ambience` / `Sfx.weather`, on its own "Ambience" bus with a slider in Settings (default 0.8).
+  A hard limiter on Master. Real loops play 5 dB over the built ones' level (REAL_LOOP_DB): at the same level they
+  were lost under the music.
+- **Found by recording the game's own sound** (`tools/dev/sound/movie.sh` + `match.py`): every duel against an
+  opponent with a theme (cocky, cool, dark, wild) had NO music. The duel asks for "duel" and, a moment later, for
+  the theme; the first change of track was still running and, when it finished, stopped the player the second
+  track had just been given. It was like this before 0.87.0 too (same code with the generated tracks). Fixed:
+  `Music._begin_fade` keeps one change of track at a time. Test `_test_music_switch_087`.
+- **Satellite** (`scripts/roam/sat_scrap.gd`, class SatScrap): heaps of things with a shape (tyres, drums, pipes,
+  corrugated sheets, beams, fridges, washers, wrecked cars and vans, broken concrete), each kind ONE mesh drawn
+  many times with its own colour (Kit -> MultiMesh; the shared painted material of BoxBatch). The old
+  `_sat_heaps` is still rolled and thrown away so the dice after it do not move. `broken_ground`: worn patches,
+  holes down to the dirt with rubble, 26 heaved slabs with their iron showing, wide cracks; it keeps off roads,
+  the ring, the walking routes, NPC spots and every collision body on the floor (`note_solids`), and it runs
+  LAST. `outskirts`: seven sheds with saw-tooth roofs (a few panes lit after dark), two yard cranes, tanks, a line
+  of pylons, heaps out to the horizon, dirt and wheel tracks, and the half-built bridge over the water toward the
+  far city (x 62, z -24 to -102). Smoke from three heaps and two sheds. **Haze**: `ArenaDistrict._apply_look`
+  (smog = true) browns the horizon, the fog and the clouds on top of whatever hour it is; `_look_now` is put back
+  to what the clock asked so `refresh_look` cannot stack it. Tests `_test_satellite_087`.
+  Measured in the same four views before / after (software renderer, counters only, NO frame rate): draw calls
+  1142/1577/1302/807 -> 1118/1590/1294/806; triangles 442k/872k/612k/609k -> 570k/997k/720k/722k (+14 % to
+  +18 % where you walk, +29 % from above). The "detail" setting scales the number of pieces (0.45 / 0.7 / 1).
+- **Dev**: `ONLY_TEST=_test_x godot --headless --path . res://tests/test_runner.tscn` runs one test; the tour
+  prints draws / triangles at each shot; `/tmp/tour2.sh <tag> "<shots>" [--tod=sunset]`.
+- **NOT checked**: nobody has HEARD any of it (I cannot): lengths, levels, silence, loop seams and presence in
+  recordings of the running game were checked, not how it sounds or whether a music track fits its place.
+  Not run on Windows or Mac. No real frame-rate number for Satellite. The other worlds' rain and night loops were
+  not recorded in a session. Turbo duel mix not recorded.

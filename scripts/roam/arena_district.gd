@@ -13,6 +13,7 @@ func build(t: Dictionary, time_of_day: String) -> void:
 	if str(t.get("key", "")) == "heartland":
 		_heartland_scene()
 	else:
+		smog = true
 		_junk_scene()
 	_stage_ring()
 	_light_windows(0.6)
@@ -49,6 +50,40 @@ func _process(delta: float) -> void:
 
 func _after_look() -> void:
 	_light_windows(0.6 if tod != "day" else 0.1)
+	if has_meta("shed_lights") and not _look_now.is_empty():
+		(get_meta("shed_lights") as Node3D).visible = float(_look_now.get("windows", 0.0)) > 0.2
+
+
+## (0.87.0) Satellite never has a clean sky: whatever the hour, there is a brown haze on the
+## horizon, the far shore is half lost in it, the clouds are dirty and the sun comes through
+## amber. The hour of the day still shows; this sits on top of it.
+var smog := false
+
+
+func _apply_look(L: Dictionary) -> void:
+	if not smog:
+		super._apply_look(L)
+		return
+	var raw := L
+	L = L.duplicate()
+	var night := clampf(float(L["stars"]), 0.0, 1.0)
+	var haze := Color(0.78, 0.55, 0.36).lerp(Color(0.13, 0.1, 0.11), night)
+	var clean_fill := (L["horizon"] as Color).lerp(L["top"], 0.5)
+	L["horizon"] = (L["horizon"] as Color).lerp(haze, 0.6)
+	L["top"] = (L["top"] as Color).lerp(Color(0.42, 0.4, 0.44).lerp(Color(0.05, 0.05, 0.08), night), 0.4)
+	L["ground"] = (L["ground"] as Color).lerp(haze.darkened(0.55), 0.5)
+	L["fog"] = (L["fog"] as Color).lerp(haze, 0.55)
+	L["fog_d"] = float(L["fog_d"]) * 1.35 + 0.0005
+	L["cloud"] = minf(0.7, float(L["cloud"]) + 0.12)
+	L["cloud_col"] = (L["cloud_col"] as Color).lerp(Color(0.8, 0.66, 0.54).lerp(Color(0.2, 0.17, 0.2), night), 0.55)
+	L["cloud_shade"] = (L["cloud_shade"] as Color).lerp(Color(0.36, 0.28, 0.27).lerp(Color(0.07, 0.06, 0.08), night), 0.55)
+	L["sun"] = (L["sun"] as Color).lerp(Color(1.0, 0.74, 0.5), 0.35 * (1.0 - night))
+	L["sun_e"] = float(L["sun_e"]) * 0.94
+	super._apply_look(L)
+	# The haze is in the air far off, not a filter over the town: the fill light keeps most of
+	# the colour of a clean sky, so paint stays paint.
+	env.ambient_light_color = clean_fill.lerp((L["horizon"] as Color).lerp(L["top"], 0.5), 0.3)
+	_look_now = raw          # (what the clock asked for: putting the look on again must not stack the haze)
 
 
 func _floor_and_ring() -> void:

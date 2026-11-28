@@ -144,8 +144,34 @@ var _boost := 0.0
 ## Turn the music up (or back down) by this many dB, now and for the tracks that follow.
 func set_boost(db: float) -> void:
 	_boost = db
-	if not _players.is_empty() and _players[_active].playing:
-		create_tween().tween_property(_players[_active], "volume_db", -3.0 + _boost, 0.6)
+	if _players.is_empty():
+		return
+	if _fade != null and _fade.is_valid() and _fade.is_running():
+		_begin_fade(_players[1 - _active], _players[_active])      # a change of track is under way: it ends at the new level
+	elif _players[_active].playing:
+		if _boost_tw != null and _boost_tw.is_valid():
+			_boost_tw.kill()
+		_boost_tw = create_tween()
+		_boost_tw.tween_property(_players[_active], "volume_db", -3.0 + _boost, 0.6)
+
+
+## (0.87.0) One change of track at a time. A duel asks for its music twice in the same breath
+## (the plain theme, then the one that suits who you face). The first change was still running
+## when the second began, and when it finished it stopped the player the NEW track had just
+## been given: every duel against someone with a theme of their own went on in silence.
+var _fade: Tween
+var _boost_tw: Tween
+
+
+func _begin_fade(old: AudioStreamPlayer, nxt: AudioStreamPlayer) -> void:
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
+	if _boost_tw != null and _boost_tw.is_valid():
+		_boost_tw.kill()
+	_fade = create_tween().set_parallel()
+	_fade.tween_property(nxt, "volume_db", -3.0 + _boost, 1.2)
+	_fade.tween_property(old, "volume_db", -80.0, 1.2)
+	_fade.chain().tween_callback(old.stop)
 
 
 func _switch(track: String) -> void:
@@ -155,13 +181,11 @@ func _switch(track: String) -> void:
 	var old := _players[_active]
 	_active = 1 - _active
 	var nxt := _players[_active]
+	nxt.stop()          # (it may still be on its way out from the change before this one)
 	nxt.stream = _streams[track]
 	nxt.volume_db = -40.0
 	nxt.play()
-	var tw := create_tween().set_parallel()
-	tw.tween_property(nxt, "volume_db", -3.0 + _boost, 1.2)
-	tw.tween_property(old, "volume_db", -80.0, 1.2)
-	tw.chain().tween_callback(old.stop)
+	_begin_fade(old, nxt)
 
 
 func _exit_tree() -> void:

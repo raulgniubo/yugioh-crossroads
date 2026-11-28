@@ -134,7 +134,22 @@ static func satellite(c: ArenaDistrict) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77
 	_sat_ground(c, rng)
+	# (0.87.0) The heaps are made of things with a shape now (SatScrap). The old heaps are still
+	# rolled and thrown away, only so the dice for everything after them fall as they always did.
+	var before := c.get_child_count()
 	_sat_heaps(c, rng)
+	while c.get_child_count() > before:
+		var old_piece := c.get_child(c.get_child_count() - 1)
+		c.remove_child(old_piece)
+		old_piece.free()
+	var tops: Array = SatScrap.heaps(c)
+	SatScrap.outskirts(c)
+	# Something is always smouldering in a heap; and two of the sheds are still at work.
+	for i in tops.size():
+		if i % 2 == 0:
+			_smoke(c, (tops[i] as Vector3) + Vector3(0, 0.4, 0), 0.8, 1.3, 8.0, Color(0.1, 0.095, 0.095), 18)
+	_smoke(c, Vector3(-84, 16.5, 14), 1.8, 2.2, 10.0, Color(0.3, 0.27, 0.25), 18)
+	_smoke(c, Vector3(86, 17.5, 26), 1.9, 2.2, 10.0, Color(0.24, 0.22, 0.21), 18)
 	_sat_garage(c)
 	_sat_containers(c, Vector3(31.5, 0, 5.0), -PI / 2.0)
 	_sat_overpass(c, rng)
@@ -142,6 +157,7 @@ static func satellite(c: ArenaDistrict) -> void:
 	_sat_yard(c, rng)
 	_sat_clutter(c, rng)
 	_sat_far(c)
+	SatScrap.broken_ground(c)      # (last: it keeps off everything that was stood on the floor before it)
 
 
 ## Cracked concrete, a patched road with what is left of its paint, oil, dirt and standing water.

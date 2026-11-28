@@ -48,6 +48,8 @@ func _ready() -> void:
 	await _test_piles_0841()
 	_test_085()
 	_test_sound_087()
+	_test_satellite_087()
+	await _test_music_switch_087()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -12185,3 +12187,89 @@ func _test_sound_087() -> void:
 	check(AudioServer.get_bus_index("Ambience") >= 0 and AudioServer.get_bus_send(AudioServer.get_bus_index("Ambience")) == &"SFX", "the air has its own volume, under Effects")
 	check((Sfx._amb[Sfx._amb_on] as AudioStreamPlayer).bus == &"Ambience", "the air of a place plays on the Ambience volume")
 	Sfx.ambience("")
+
+
+## (0.87.0) Satellite rebuilt: scrap with real shapes drawn many-at-once, a broken floor that
+## keeps off the ways people walk, the works beyond the fence, and a haze that does not stack.
+func _test_satellite_087() -> void:
+	for kind in ["tyre", "wheel", "drum", "pipe", "sheet", "beam", "fridge", "washer", "wreck", "van", "chunk", "slab", "disc", "cube", "mound"]:
+		var probe := CityBuilder.new()
+		var me := SatScrap.mesh(kind, probe)
+		var arr := me.surface_get_arrays(0)
+		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		var turned := 0
+		for i in range(0, verts.size() - 2, 3):
+			# the engine shows the side a triangle's corners go clockwise on; the normals must be on that side
+			if (verts[i + 1] - verts[i]).cross(verts[i + 2] - verts[i]).dot(norms[i] + norms[i + 1] + norms[i + 2]) > 0.0001:
+				turned += 1
+		check(verts.size() >= 12 and verts.size() == norms.size() and turned == 0 and arr[Mesh.ARRAY_COLOR] != null, "the scrap piece %s is a closed, right-way-round mesh (%d corners, %d turned)" % [kind, verts.size(), turned])
+		probe.free()
+	check(not SatScrap._open_floor(Vector3(0, 0, 20)) and not SatScrap._open_floor(Vector3(0, 0, 0)) and not SatScrap._open_floor(Vector3(1.5, 0, -10)), "the roads and the ring count as taken")
+	check(not SatScrap._open_floor(Vector3(-8, 0, 11)) and not SatScrap._open_floor(Vector3(-22, 0, 4)) and not SatScrap._open_floor(Vector3(24, 0, -18)), "where people stand, walk and trade counts as taken")
+	check(SatScrap._open_floor(Vector3(-30, 0, 6), 1.0) and not SatScrap._open_floor(Vector3(39.5, 0, 0)), "open floor is open, the fence line is not")
+	var town := ArenaDistrict.new()
+	add_child(town)
+	town.build(FieldThemes.resolve("satellite", ""), "day")
+	var kinds := {}
+	var pieces := 0
+	var tris := 0
+	var slabs_ok := true
+	for ch in town.get_children():
+		if ch is MultiMeshInstance3D and ch.has_meta("scrap"):
+			var mm := (ch as MultiMeshInstance3D).multimesh
+			var kind := str(ch.get_meta("scrap"))
+			kinds[kind] = int(kinds.get(kind, 0)) + mm.instance_count
+			pieces += mm.instance_count
+			tris += mm.instance_count * mm.mesh.get_faces().size() / 3
+	for o in SatScrap.slab_spots:
+		if not SatScrap._open_floor(o, 1.0):
+			slabs_ok = false
+	check(SatScrap.slab_spots.size() >= 10, "the floor has slabs pushed up out of it (%d)" % SatScrap.slab_spots.size())
+	for kind in ["tyre", "drum", "pipe", "sheet", "beam", "wreck", "chunk", "slab", "mound", "disc"]:
+		check(int(kinds.get(kind, 0)) >= 8, "Satellite has %s lying about (%d)" % [kind, int(kinds.get(kind, 0))])
+	check(slabs_ok, "every heaved slab is on open floor and low enough to step over")
+	check(pieces >= 1200 and pieces <= 3200 and tris <= 150000, "the scrap stays inside its budget (%d pieces, %d triangles)" % [pieces, tris])
+	check(town.smog and town.has_meta("shed_lights"), "Satellite has its haze and the sheds their lit panes")
+	var fog_a := town.env.fog_density
+	var horizon_a: Color = town.sky_mat.get_shader_parameter("horizon")
+	town.refresh_look()
+	town.refresh_look()
+	check(is_equal_approx(fog_a, town.env.fog_density) and horizon_a.is_equal_approx(town.sky_mat.get_shader_parameter("horizon")), "putting the look on again does not thicken the haze")
+	town.apply_tod("night")
+	check(not (town.get_meta("shed_lights") as Node3D).visible == false, "the sheds' panes are lit at night")
+	town.apply_tod("day")
+	check((town.get_meta("shed_lights") as Node3D).visible == false, "and dark by day")
+	var clean := CityBuilder.TOD_LOOK["day"]["fog_d"] as float
+	check(town.env.fog_density > clean * CityBuilder.fplus_look()["fog"] * 1.2, "the air over Satellite is thicker than a clean day's")
+	town.queue_free()
+
+
+## (0.87.0) Two changes of track in the same breath (what every duel does) leave the second one
+## playing, at the level a duel asks for, and nothing else.
+func _test_music_switch_087() -> void:
+	Music.set_boost(0.0)
+	Music.play("menu")
+	await get_tree().create_timer(1.5).timeout
+	Music.play("duel")
+	Music.set_boost(3.5)
+	Music.play("duel_wild")
+	await get_tree().create_timer(1.7).timeout
+	var live: Array = []
+	for pl in Music._players:
+		if (pl as AudioStreamPlayer).playing:
+			live.append(pl)
+	check(live.size() == 1 and (live[0] as AudioStreamPlayer).stream == Music._own_track("duel_wild"), "after two quick changes of track the last one asked for is the one playing (%d playing)" % live.size())
+	if live.size() == 1:
+		check(absf((live[0] as AudioStreamPlayer).volume_db - 0.5) < 0.2, "and it plays at the duel's level (%.1f dB)" % (live[0] as AudioStreamPlayer).volume_db)
+	Music.play("duel_tense")
+	await get_tree().create_timer(0.3).timeout
+	Music.play("duel_wild")
+	await get_tree().create_timer(1.7).timeout
+	live = []
+	for pl in Music._players:
+		if (pl as AudioStreamPlayer).playing:
+			live.append(pl)
+	check(live.size() == 1 and (live[0] as AudioStreamPlayer).stream == Music._own_track("duel_wild"), "there and straight back again still ends on the right track")
+	Music.set_boost(0.0)
+	Music.play("menu")

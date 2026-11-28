@@ -701,6 +701,19 @@ func _ensure_buses() -> void:
 			var idx := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(idx, bus_name)
 			AudioServer.set_bus_send(idx, "Master")
+	# (0.87.0) A ceiling on everything at once. Recorded sounds have sharper peaks than the old
+	# tones: several landing on the same instant (five cards dealt, an attack over the music)
+	# went over full scale and crackled. This holds the sum just under it and touches nothing else.
+	var has_ceiling := false
+	for i in AudioServer.get_bus_effect_count(0):
+		if AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter:
+			has_ceiling = true
+	if not has_ceiling:
+		var lim := AudioEffectHardLimiter.new()
+		lim.ceiling_db = -0.8
+		lim.pre_gain_db = 0.0
+		lim.release = 0.12
+		AudioServer.add_bus_effect(0, lim)
 	# (0.87.0) The air of a place has its own slider. It sits under Effects, so that one still turns it down too.
 	if AudioServer.get_bus_index("Ambience") == -1:
 		AudioServer.add_bus()

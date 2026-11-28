@@ -3043,7 +3043,8 @@ func _debug() -> void:
 					await get_tree().process_frame
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png("/tmp/%s.png" % bits[0])
-				print("tour shot ", bits[0])
+				print("tour shot ", bits[0], "  draws ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " tris ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
+						" objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " nodes ", int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)))
 			get_tree().quit()
 		elif a == "--roam-walk":
 			await get_tree().create_timer(0.5).timeout

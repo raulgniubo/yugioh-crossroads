@@ -73,12 +73,13 @@ for name, secs, _p in spec["sounds"]:
     tail = rms(t[-int(0.08 * SR):].mean(axis=1))
     cut = tail > loud100(t) * 10 ** (-12 / 20)
     if cut: t = fade(t, 0, min(len(t) // 2, int(0.14 * SR)))
-    T = min(0.89, 10 ** ((target + 13.0) / 20))
-    for _i in range(4):
+    # a duel plays its sounds 4 dB up, several at once: no single one may sit near full scale
+    T = min(0.63, 10 ** ((target + 12.0) / 20))
+    for _i in range(5):
         t = t * (10 ** (target / 20) / max(loud100(t), 1e-6))
         t = soft(t, T)
     pk = float(np.abs(t).max())
-    if pk > 0.89: t = t * (0.89 / pk)
+    if pk > 0.63: t = t * (0.63 / pk)
     mono = write(t, os.path.join(REPO, "audio/sounds", name + ".ogg"), 4, os.path.join(LISTEN, "sounds", name + ".mp3"))
     report["sounds"][name] = {"s": round(len(t) / SR, 2), "loud": round(db(loud100(t)), 1), "peak": round(db(np.abs(t).max()), 1), "raw_peak": round(db(raw_peak), 1), "mono": bool(mono), "target": target, "cut": bool(cut)}
     if len(t) / SR < 0.12: report["flags"].append("%s: very short (%.2f s)" % (name, len(t) / SR))

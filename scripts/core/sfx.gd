@@ -530,7 +530,7 @@ var _wx_db := -18.0
 ## (0.87.0) A real loop for this kind of air: res://audio/ambience/<kind>.ogg, or yours in
 ## <card folder>/ambience. Null when there is none: the loop made by code plays as before.
 var _own_loops := {}
-const REAL_LOOP_DB := 0.0      # the real loops are levelled to the built ones (tools/dev/sound/process.py)
+const REAL_LOOP_DB := 5.0      # recorded air is levelled like the built loops, then lifted: under the music it was lost (measured in a recording of the game)
 
 func _own_loop(kind: String) -> AudioStream:
 	if kind == "":

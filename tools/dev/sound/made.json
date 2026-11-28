@@ -1,1 +1,43 @@
-{}
+{
+ "date": "2026-11-28",
+ "flow": "wWVEW1kMqjoFua8oGtTV",
+ "models": {
+  "sounds": "eleven_text_to_sound_v3",
+  "ambience": "eleven_text_to_sound_v3 (loop)",
+  "music": "eleven_music_v2_5 (instrumental)"
+ },
+ "credits": {
+  "sounds (140)": 475,
+  "ambience (10 x 30 s)": 1000,
+  "music (18 tracks, 1520 s)": 22800,
+  "sandbox": 168,
+  "total": 24443
+ },
+ "account_after": {
+  "used": 672141,
+  "limit": 783423,
+  "left": 111282
+ },
+ "music_generations": {
+  "menu": "DEKJjCFD9AV5NRsOoMRr",
+  "shop": "bLT26oc2mU4anHpqAGyd",
+  "duel": "UsgTo70mbwmuSkO72pFS",
+  "duel_tense": "bhBClQeE7sKwTuLMtSNs",
+  "duel_rival": "mgIht4Im6OqZJUIyI81z",
+  "turbo": "w86gMaTw99dLnt4POw31",
+  "victory": "clgU4eTkJ8Woy1X6EVOm",
+  "defeat": "e0fQaxC2glOyn1nmSu21",
+  "city": "vv8leMUgz3V0hQ2IldDS",
+  "academy": "HFcIf8wh5GPKKa0zK4fq",
+  "satellite": "jSdCsYRHTwPC6qVctE1V",
+  "newdomino": "lPSna3dZVUOoGo6M9Ikd",
+  "heartland": "uanIYUwxD1x51a0CuOQA",
+  "memory": "3bccgLRXOwCUT1IhtuII",
+  "duel_dark": "RMMGFgEYurbd6o0d3RFK",
+  "duel_wild": "U1YHlAnOb4Rz45VRYFNP",
+  "museum": "yLFaxw1QJafHobJgBl7c",
+  "finale": "pLzsxU7A26NdQbX5DVcr"
+ },
+ "prices_measured": "sound effects about 3.3 credits per second; music 15 credits per second (the estimate call said 30: it charged half)",
+ "not_heard": "Nobody has listened to these yet: they were checked by length, level, silence, loop seam and by finding them in recordings of the running game."
+}
