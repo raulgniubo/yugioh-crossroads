@@ -79,6 +79,35 @@ static func _play(scene, board, st, name: String) -> void:
 			await scene.get_tree().create_timer(1.0).timeout
 		# The draw everything rides on (fate_draw: yours, fate_draw_opp: theirs), and a hit on the Life
 		# Points bar (lp_hit), and the entrance of one of the newer aces (ace_new, FX_ACE=<card name>).
+		# (0.84.0) The set pieces of the famous Spells and Traps: st_card, FX_CARD=<card name>. Three of
+		# theirs stand there (the middle one in Defense), one of them attacking; one of yours faces them.
+		"st_card":
+			var sname := OS.get_environment("FX_CARD")
+			if sname == "":
+				sname = "Mirror Force"
+			var theirs3: Array = []
+			for z in [1, 2, 3]:
+				var tm = _mk(st, "Dark Magician", AI)
+				tm.attack_pos = z != 2
+				st.players[AI].field[z] = tm
+				var tc: Card3D = board._new_card(tm)
+				tc.transform = Transform3D(board.table_basis(AI, true, tm.attack_pos), board.monster_zone_pos(AI, z) + Vector3(0, 0.02, 0))
+				theirs3.append(tm)
+			var mm = _mk(st, "Dark Magician", ME)
+			st.players[ME].field[2] = mm
+			var mc: Card3D = board._new_card(mm)
+			mc.transform = Transform3D(board.table_basis(ME, true, true), board.monster_zone_pos(ME, 2) + Vector3(0, 0.02, 0))
+			await scene.get_tree().create_timer(0.5).timeout
+			# (several names split by | play one after the other, 2.1 s each: a reel)
+			for one in sname.split("|"):
+				print("STCARD ", one, " aims=", StrikeFx.aims(one))
+				if StrikeFx.aims(one):
+					StrikeFx.card_on(board, one, ME, board.monster_zone_pos(AI, 1) + Vector3(0, 0.02, 0))
+				else:
+					var played := StrikeFx.card(board, one, ME, {"attacker": board.monster_zone_pos(AI, 1), "summoned": board.monster_zone_pos(AI, 3)})
+					if not played:
+						print("STCARD has no look: ", one)
+				await scene.get_tree().create_timer(2.1).timeout
 		"fate_draw", "fate_draw_opp":
 			var fp := ME if name == "fate_draw" else AI
 			ScreenFx.letterbox(scene.hud, 1.9)
@@ -104,8 +133,10 @@ static func _play(scene, board, st, name: String) -> void:
 			var ac = _mk(st, an, ME)
 			var ad: Dictionary = (ac.data as Dictionary).duplicate()
 			ad["id"] = ac.id
+			print("ACE ", an, " boss=", SummonShow.is_boss(ad), " figure=", (SummonShow.SIGNATURE.get(an, ["", "", "?"]) as Array)[2])
 			SummonShow.play(scene, ad, true)
-			await scene.get_tree().create_timer(2.4).timeout
+			await scene._ace_arrives(ME, ad, 2)
+			await scene.get_tree().create_timer(0.9).timeout
 		"lumen_summon":
 			await board.anim_summon(ME, _mk_id(st, 99200001, ME), 2, false)
 			await board.hologram(_mk_id(st, 99200001, ME), board.monster_zone_pos(ME, 2))

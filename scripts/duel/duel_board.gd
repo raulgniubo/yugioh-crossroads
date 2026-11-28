@@ -1523,6 +1523,24 @@ func anim_draw(p: int, inst, deck_count: int) -> void:
 		await _wait(0.1 if deal_fast else 0.2)
 
 
+## A big monster's entrance comes down to the table (0.84.0): a shaft of light in its two colors
+## onto the zone it is about to stand on, rings going out from it, sparks. A boss: wider, twice.
+func ace_lands(p: int, zone: int, a: Color, b: Color, boss := false) -> void:
+	var at := monster_zone_pos(p, zone)
+	var floor_at := Vector3(at.x, 0.03, at.z)
+	DuelFx.pillar(self, floor_at, a, 0.5 if not boss else 0.75, 7.0, 0.7, 0.0, 2.4)
+	DuelFx.pillar(self, floor_at, b.lightened(0.3), 0.24 if not boss else 0.4, 7.0, 0.55, 0.05, 2.8)
+	DuelFx.ring(self, floor_at, a, 0.3, 2.2 if not boss else 3.4, 0.55, 0.07)
+	DuelFx.ring(self, floor_at, b.lightened(0.3), 0.3, 1.5 if not boss else 2.4, 0.5, 0.05, 0.08)
+	DuelFx.rect(self, floor_at, a, 1.0, 1.6, 0.5, false, 2.6, 0.6)
+	DuelFx.embers(self, floor_at, a.lightened(0.3), 0.55, 36 if not boss else 60, 1.0, 3.0, 0.06)
+	DuelFx.glow(self, at + Vector3(0, 0.5, 0), a.lightened(0.5), 2.0 if not boss else 3.0, 0.4, 0.7, 2.6)
+	if boss:
+		DuelFx.ring(self, floor_at, a, 0.4, 4.6, 0.8, 0.09, 0.16)
+		DuelFx.rays(self, floor_at, b.lightened(0.3), 3.2, 0.5, 30)
+		house(0.6, a, at, 0.3)
+
+
 ## The draw everything rides on (0.83.0): low on Life Points, next to nothing in hand, and this is
 ## the card that has to save the duel. The camera leans in on the Deck, it lights up gold, the card
 ## comes off it slowly, hangs for a beat in a burst of light, and only then goes to the hand.

@@ -11889,9 +11889,26 @@ func _test_cards_gate() -> void:
 ## has, with two colors, a figure the show can draw, a line in Spanish; every Attribute has a way
 ## for a card it destroys to go.
 func _test_duel_fx_083() -> void:
-	var figures := ["cards", "circle", "lightning", "flames", "aurora", "nova", "hex", "rays", "stars", "gears", "petals", "feathers", "galaxy", "waves", "streaks"]
+	var figures := ["cards", "circle", "lightning", "flames", "aurora", "nova", "hex", "rays", "stars", "gears", "petals", "feathers", "galaxy", "waves", "streaks",
+		"wings", "slash", "runes", "storm", "bloom", "photon"]
 	var es := TranslationServer.get_translation_object("es")
-	check(SummonShow.SIGNATURE.size() >= 56, "56 aces or more have an entrance of their own (%d)" % SummonShow.SIGNATURE.size())
+	check(SummonShow.SIGNATURE.size() >= 143, "143 aces or more have an entrance of their own (%d)" % SummonShow.SIGNATURE.size())
+	var used := {}
+	for nm0 in SummonShow.SIGNATURE:
+		used[str((SummonShow.SIGNATURE[nm0] as Array)[2])] = true
+	for fig in ["wings", "slash", "runes", "storm", "bloom", "photon"]:
+		check(used.has(fig), "the new figure %s is some ace's" % fig)
+	check(SummonShow.is_boss({"name": "Odin, Father of the Aesir", "atk": 4000}) and SummonShow.is_boss({"name": "Yubel", "atk": 0}) and not SummonShow.is_boss({"name": "Jinzo", "atk": 2400}), "the long entrance is for 4000 ATK and the named bosses")
+	check(SummonShow.hold_for({"name": "Yubel", "atk": 0}) > SummonShow.hold_for({"name": "Jinzo", "atk": 2400}), "the duel waits longer on a boss")
+	# (0.84.0) The famous Spells and Traps: the ones whose look plays on the card they are aimed at.
+	for aimed in ["Ring of Destruction", "Spellbinding Circle", "Shadow Spell", "Fiendish Chain", "Change of Heart", "Brain Control", "Mind Control", "Snatch Steal",
+			"Enemy Controller", "Book of Moon", "Compulsory Evacuation Device", "Dimensional Prison", "Mystical Space Typhoon", "Twister", "Dust Tornado", "Thousand Knives"]:
+		check(StrikeFx.aims(aimed), "%s has its look on the card it targets" % aimed)
+	for whole in ["Raigeki", "Dark Hole", "Mirror Force", "Magic Cylinder", "Torrential Tribute", "Solemn Judgment", "Bottomless Trap Hole", "Monster Reborn"]:
+		check(not StrikeFx.aims(whole), "%s plays over the table, not on one target" % whole)
+	var sfx_src := FileAccess.get_file_as_string("res://scripts/duel/strike_fx.gd")
+	for piece in ["_magic_cylinder", "_mirror_force", "_torrent", "_solemn", "_bottomless", "_burst_stream", "_dark_magic_attack", "_burn", "_heal"]:
+		check(sfx_src.contains("static func %s(" % piece) and sfx_src.count(piece + "(") >= 2, "the set piece %s is written and used" % piece)
 	var whole_db := CardData.NAME_TO_ID.has("dark magician")      # (the test run may not have the card database: then names are not checked here)
 	for nm in SummonShow.SIGNATURE:
 		var spec: Array = SummonShow.SIGNATURE[nm]

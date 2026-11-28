@@ -1889,3 +1889,31 @@ What is new:
   fate_scene, lp_hit, ace_new (FX_ACE=<name>). /tmp/fxbatch.sh films several without syncing; /tmp/fxsheet.py (CROP).
 - Filmed: battle, fire, dark, wind, light, the draw (board and through the scene). NOT filmed: water, earth, spell,
   trap, the opponent's fate draw, the LP bar, any of the 27 entrances.
+
+## 0.84.0 (Nov 27 night): the aces' entrance reworked, 87 more aces, set pieces for the famous Spells and Traps
+Raul: "haz todo eso de golpe, que quede super bien y beautiful y fluido... tamb a cartas como magic cilinder,
+mirror force, cartas como esas y otras les podemos hacer animaciones buenas".
+- **The entrance (SummonShow)**: the picture has a shader (ART_GLSL: a white flash that dies and one sweep of
+  light across it), comes in from small with a turn and two after-images, then drifts very slowly; behind it a
+  soft glow and turning shafts in the ace's two colors, a burst ring, a slanted band under the name; the tagline
+  is bigger and outlined. Six new figures: wings, slash, runes, storm, bloom, photon (21 in all).
+- **Two sizes**: `SummonShow.is_boss(card)` (4000 ATK or more, or in BOSSES) plays 2.55 s with the letterbox, two
+  shakes, a rumble and three burst rings; the rest 1.5 s hold. `hold_for`, `colors_of`.
+- **It lands on the table**: scene `_ace_arrives(p, card, zone)` (both entrance call sites) waits the hold, then
+  `board.ace_lands(p, zone, a, b, boss)`: two pillars in its colors, rings, embers on its zone.
+- **143 aces** (SIGNATURE; 87 new, all with a Spanish line): Neo Blue-Eyes Ultimate, Quintet Magician, Black Skull
+  Dragon, Dragoon, Shooting Quasar, Cosmic Blazar, the three Aesir, Ruddy Rose, Cipher Dragon, Utopia Beyond...
+  14 older ones moved to the new figures.
+- **Spells and Traps (StrikeFx)**: `card(board, name, p, ctx)` now gets ctx {"attacker", "summoned"} (the scene
+  keeps `_attack_card` and `_summoned_card`). Set pieces: `_magic_cylinder` (two tubes; the attack goes into
+  one, crosses, leaves the other at the attacker's duelist), `_mirror_force` (a wall of mirror with its own shader
+  MIRROR, the hit lands on it, a blade for each of theirs in ATTACK position (state_ref), then it shatters),
+  `_torrent`, `_solemn` (Judgment / Warning / Strike), `_bottomless` (under the monster just summoned),
+  `_burst_stream`, `_dark_magic_attack`, `_burn` (Hinotama, Ookazi, Tremendous Fire...), `_heal` (Dian Keto...).
+- **On the card they aim at**: `StrikeFx.aims(name)` + `card_on(board, name, p, at)`, called from the scene's
+  "targets" event (only the OCG engine sends it): Ring of Destruction, Spellbinding Circle / Shadow Spell /
+  Fiendish Chain, Change of Heart / Brain Control / Mind Control / Snatch Steal / Enemy Controller, Book of Moon,
+  Compulsory Evacuation Device, Dimensional Prison, Thousand Knives, MST / Twister / Dust Tornado.
+- A ShaderMaterial uniform must be SET before a tween can find "shader_parameter/x" (Mirror Force taught this).
+- FxDemo: `st_card` with FX_CARD="A|B|C" (a reel, 2.1 s each); /tmp/stbatch.sh "tag|Card|Card". Under llvmpipe
+  game time runs far behind real time: FX_SCALE=0.2 for one card, 0.5 and TMO=1100 for a reel.

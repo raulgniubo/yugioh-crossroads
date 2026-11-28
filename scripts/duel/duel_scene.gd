@@ -1931,6 +1931,8 @@ func _play_event(ev: Dictionary) -> void:
 			if p == ME:
 				hud.add_hand_card(ev["card"])
 		"summon", "set":
+			_summoned_card = ev["card"]
+			_summoned_ms = Time.get_ticks_msec()
 			if p == ME:
 				_leave_hand(ev["card"])
 				if ev["type"] == "summon":
@@ -1950,7 +1952,7 @@ func _play_event(ev: Dictionary) -> void:
 				sd["id"] = ev["card"].id
 				_shown = ev["card"]
 				SummonShow.play(self, sd, p == ME)
-				await get_tree().create_timer(Settings.t(1.5)).timeout
+				await _ace_arrives(p, sd, int(ev["zone"]))
 			if is_ace:
 				_talk(p, "ace", 1.0, 0.0, int(ev["card"].id))
 				hud.react(p, "ace")
@@ -2072,10 +2074,13 @@ func _play_event(ev: Dictionary) -> void:
 			# The effect that was just activated picked these: a line of its kind runs to each.
 			if _fx_kind != "" and not _autoplay:
 				var aimed := 0
+				var fx_name := str(_fx_card.data.get("name", "")) if _fx_card != null else ""
 				for tcard in ev.get("cards", []):
 					var t3 := board.card_for(tcard)
 					if t3 != null and is_instance_valid(t3) and tcard != _fx_card and t3.position.y < 0.7 and aimed < 3:
 						CardFx.aim(board, _fx_at, t3.position, _fx_kind)
+						if StrikeFx.aims(fx_name):
+							StrikeFx.card_on(board, fx_name, _fx_p, t3.position)      # (0.84.0: its own look, on the card it was aimed at)
 						aimed += 1
 				if aimed > 0:
 					await get_tree().create_timer(Settings.t(0.3)).timeout
@@ -2102,6 +2107,8 @@ func _play_event(ev: Dictionary) -> void:
 		"attack":
 			var atk_card = ev["card"]
 			var direct: bool = ev["target"] == null
+			_attack_card = atk_card
+			_attack_ms = Time.get_ticks_msec()
 			if direct and p == ME:
 				_my_directs += 1
 				_lumen("direct")
@@ -2283,6 +2290,8 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_material(p, ev["card"], ev["from"], board.monster_zone_pos(p, 2))
 		"special":
 			var method: String = ev["method"]
+			_summoned_card = ev["card"]
+			_summoned_ms = Time.get_ticks_msec()
 			if p == ME:
 				_leave_hand(ev["card"])
 				_my_summons_now += 1
@@ -2309,7 +2318,7 @@ func _play_event(ev: Dictionary) -> void:
 				sd2["id"] = ev["card"].id
 				_shown = ev["card"]
 				SummonShow.play(self, sd2, p == ME)
-				await get_tree().create_timer(Settings.t(1.5)).timeout
+				await _ace_arrives(p, sd2, int(ev["zone"]))
 			var mats := _materials.duplicate()
 			_materials.clear()
 			await board.anim_special(p, ev["card"], ev["zone"], method, mats, int(ev.get("origin", 0)))
@@ -2947,6 +2956,10 @@ func _exit_tree() -> void:
 
 var _fx_card = null        # the card whose effect was just activated (CardFx)
 var _fx_ms := 0             # when it was activated
+var _attack_card = null     # the monster whose attack is in the air (Magic Cylinder, Mirror Force answer it)
+var _attack_ms := 0
+var _summoned_card = null   # the monster that just hit the table (Bottomless Trap Hole, Torrential answer it)
+var _summoned_ms := 0
 var _fate := [-1, -1]       # the turn whose own draw is "the draw everything rides on" for each duelist (-1: none)
 var _fated := [false, false]      # ...which each of them gets once a duel
 
@@ -2970,6 +2983,24 @@ func _fate_draw(p: int) -> bool:
 			worst = maxi(worst, int(m.atk()))
 	return mine == 0 or worst >= int(me.lp)
 var _hit := {}              # the last battle: {"a": attacker, "t": target, "a_at", "t_at", "until"} (how a card it destroys goes)
+
+
+## The wait on a big monster's entrance (SummonShow), and what goes with it on the table: a boss
+## gets the black bars and shakes the table as it lands, and for every one the light of its
+## entrance comes down onto the zone it is about to stand on, so the two are one moment.
+func _ace_arrives(p: int, card: Dictionary, zone: int) -> void:
+	var boss := SummonShow.is_boss(card)
+	var hold := SummonShow.hold_for(card)
+	if boss and not _autoplay:
+		ScreenFx.letterbox(hud, hold + 0.1)
+		get_tree().create_timer(0.62).timeout.connect(func(): board.shake(0.7))
+		get_tree().create_timer(0.86).timeout.connect(func(): board.shake(0.45))
+		Pad.rumble(0.5, 0.7, 0.5)
+	await get_tree().create_timer(Settings.t(hold - 0.3)).timeout
+	if not _autoplay:
+		var cols := SummonShow.colors_of(card)
+		board.ace_lands(p, zone, cols[0], cols[1], boss)
+	await get_tree().create_timer(Settings.t(0.3)).timeout
 
 
 ## What took this card down, for how it goes (board.anim_destroy): the monster it just fought, or
@@ -2998,7 +3029,17 @@ var _fx_at := Vector3.ZERO
 func _card_look(p: int, card, label: String) -> void:
 	if card == null or board == null:
 		return
-	var sig := StrikeFx.card(board, str(card.data.get("name", "")), p)
+	var atk_at := Vector3.INF
+	if _attack_card != null and Time.get_ticks_msec() - _attack_ms < 12000:
+		var ac3 := board.card_for(_attack_card)
+		if ac3 != null and is_instance_valid(ac3):
+			atk_at = ac3.get_meta("home", ac3.transform).origin
+	var sum_at := Vector3.INF
+	if _summoned_card != null and Time.get_ticks_msec() - _summoned_ms < 12000:
+		var sc3 := board.card_for(_summoned_card)
+		if sc3 != null and is_instance_valid(sc3):
+			sum_at = sc3.get_meta("home", sc3.transform).origin
+	var sig := StrikeFx.card(board, str(card.data.get("name", "")), p, {"attacker": atk_at, "summoned": sum_at})
 	var k := CardFx.kind(card, label)
 	_fx_card = card
 	_fx_kind = k
