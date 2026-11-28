@@ -1135,8 +1135,11 @@ func _place_mark(on: Control) -> void:
 
 
 ## After any change to the deck: the deck redraws, the collection tiles recount.
+var _touched := false      # (0.87.0) the deck was changed in this visit: it closes with the "deck put away" sound
+
 func _changed(added := -1) -> void:
 	_last_added = added
+	_touched = true
 	_rebuild_deck()
 	for t in _grid.get_children():
 		if t.has_meta("refresh"):
@@ -2199,6 +2202,8 @@ func _close() -> void:
 	Collection._apply_active()
 	if not Collection.deck_ok() and Collection.active == "custom":
 		Router.toast(Loc.t("Your deck needs %d to %d cards, so %s is back in use") % [Collection.MAIN_MIN, Collection.MAIN_MAX, CardData.deck_name(Collection.fallback_deck())])
+	if _touched and Collection.deck_ok():
+		Sfx.play_own("deck_save", -4.0)
 	var tw := create_tween()
 	tw.tween_property(self, "modulate:a", 0.0, 0.2)
 	await tw.finished

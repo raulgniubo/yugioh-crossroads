@@ -804,7 +804,7 @@ func _collect(c: Dictionary) -> void:
 	tw.chain().tween_callback(n.queue_free)
 	Collection.dp += CHIP_DP
 	Collection.daily_bump("chip")
-	Sfx.play("coin", -2.0)
+	Sfx.play_or("star_chip", "coin", -2.0)
 	var total := _chip_spots().size()
 	if got.size() == total:
 		Collection.dp += CHIPS_ALL_DP

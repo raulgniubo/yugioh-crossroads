@@ -132,9 +132,23 @@ func play_own(name: String, volume_db := 0.0, pitch := 1.0) -> bool:
 	return true
 
 
+## Plays `name` when there is a real sound for it, else `fallback` (a name the game always had).
+func play_or(name: String, fallback: String, volume_db := 0.0, pitch := 1.0) -> void:
+	if not play_own(name, volume_db, pitch):
+		play(fallback, volume_db, pitch)
+
+
+## Milliseconds since any sound last started: a notice chimes only when nothing else just spoke.
+var _last_any := -100000
+
+func quiet_ms() -> int:
+	return Time.get_ticks_msec() - _last_any
+
+
 ## Forget your own sounds (the card folder changed): they are looked for again.
 func reload_own() -> void:
 	_own.clear()
+	_own_loops.clear()
 
 
 func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
@@ -147,6 +161,7 @@ func play(name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	if now - int(_last.get(name, -1000)) < 45:
 		return
 	_last[name] = now
+	_last_any = now
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
 	p.stream = mine if mine != null else _sounds[name]
@@ -512,20 +527,48 @@ var _wx_want := ""
 var _wx_db := -18.0
 
 
+## (0.87.0) A real loop for this kind of air: res://audio/ambience/<kind>.ogg, or yours in
+## <card folder>/ambience. Null when there is none: the loop made by code plays as before.
+var _own_loops := {}
+const REAL_LOOP_DB := 0.0      # the real loops are levelled to the built ones (tools/dev/sound/process.py)
+
+func _own_loop(kind: String) -> AudioStream:
+	if kind == "":
+		return null
+	if not _own_loops.has(kind):
+		var s := own_file("ambience", kind)
+		if s is AudioStreamOggVorbis:
+			(s as AudioStreamOggVorbis).loop = true
+		elif s is AudioStreamMP3:
+			(s as AudioStreamMP3).loop = true
+		elif s is AudioStreamWAV:
+			(s as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+			(s as AudioStreamWAV).loop_end = int((s as AudioStreamWAV).get_length() * (s as AudioStreamWAV).mix_rate)
+		_own_loops[kind] = s
+	return _own_loops[kind]
+
+
+func _air_bus() -> String:
+	return "Ambience" if AudioServer.get_bus_index("Ambience") >= 0 else "SFX"
+
+
 func weather(kind: String, volume_db := -18.0) -> void:
 	_wx_want = kind
 	_wx_db = volume_db
 	if _wx == null:
 		_wx = AudioStreamPlayer.new()
-		_wx.bus = "SFX"
+		_wx.bus = _air_bus()
 		add_child(_wx)
-	if kind == "" or not _sounds.has("amb_" + kind):
+	var real := _own_loop(kind)
+	if kind == "" or (real == null and not _sounds.has("amb_" + kind)):
 		if _wx.playing:
 			var tw := create_tween()
 			tw.tween_property(_wx, "volume_db", -60.0, 0.8)
 			tw.tween_callback(_wx.stop)
 		return
-	_wx.stream = _sounds["amb_" + kind]
+	_wx.stream = real if real != null else _sounds["amb_" + kind]
+	if real != null:
+		volume_db += REAL_LOOP_DB
 	_wx.volume_db = -50.0
 	_wx.play()
 	create_tween().tween_property(_wx, "volume_db", volume_db, 1.2)
@@ -545,7 +588,8 @@ func ambience(kind: String, volume_db := -16.0) -> void:
 	_amb_want = kind
 	if _amb.is_empty():
 		return
-	if kind != "" and not _sounds.has("amb_" + kind):
+	var real := _own_loop(kind)
+	if kind != "" and real == null and not _sounds.has("amb_" + kind):
 		return   # still being built: _add_sounds starts it
 	if kind == _amb_name:
 		return
@@ -557,10 +601,13 @@ func ambience(kind: String, volume_db := -16.0) -> void:
 	tw.tween_property(old, "volume_db", -60.0, 1.0)
 	tw.chain().tween_callback(old.stop)
 	if kind != "":
-		nxt.stream = _sounds["amb_" + kind]
+		nxt.stream = real if real != null else _sounds["amb_" + kind]
+		# The air of a place follows the Ambience slider; an engine or the rushing wind is an effect.
+		nxt.bus = "SFX" if kind in ["engine", "tunnel", "wind"] else _air_bus()
+		nxt.pitch_scale = 1.0
 		nxt.volume_db = -50.0
 		nxt.play()
-		create_tween().tween_property(nxt, "volume_db", volume_db, 1.4)
+		create_tween().tween_property(nxt, "volume_db", volume_db + (REAL_LOOP_DB if real != null else 0.0), 1.4)
 
 
 func _exit_tree() -> void:

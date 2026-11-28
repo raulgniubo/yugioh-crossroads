@@ -76,7 +76,6 @@ func _ready() -> void:
 	Pad.both_sticks = true
 	Pad.hint("X  next phase     Y Y  end turn")
 	Music.play("duel")
-	Music.ambience("arena")
 	DuelAudio.reset()
 	# A duel is the loud part of the game: music and effects come up, the crowd is in the room.
 	Sfx.boost_db = 4.0

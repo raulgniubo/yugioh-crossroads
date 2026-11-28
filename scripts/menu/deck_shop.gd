@@ -452,7 +452,7 @@ func _do_buy() -> void:
 		Router.toast("Not enough Duel Points")
 		Sfx.play("blip", -6.0, 0.6)
 		return
-	Sfx.play("coin", -2.0)
+	Sfx.play_or("purchase", "coin", -2.0)
 	# The deck opens like a booster pack.
 	var scene := DeckOpening.new(e, before)
 	add_child(scene)

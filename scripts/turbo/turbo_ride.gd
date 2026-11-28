@@ -933,7 +933,7 @@ func _process(delta: float) -> void:
 					Collection.dp += 15
 					Collection.save()
 					_save()
-					Sfx.play("coin", -3.0)
+					Sfx.play_or("star_chip", "coin", -3.0)
 					_gain(4.0)
 					Router.toast(Loc.t("Star Chip!  +15 Duel Points  (%d on this road)") % _chips)
 					_recycle(th)

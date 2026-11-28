@@ -98,34 +98,6 @@ func reload_own() -> void:
 	_own.clear()
 
 
-## (0.87.0) The place's own air, looped under the music: Music.ambience("satellite"), "" for none.
-## Files: res://audio/ambience/<name>.ogg (or yours in <card folder>/ambience). No file, no sound.
-var _amb: AudioStreamPlayer = null
-var _amb_name := ""
-const AMBIENCE_DB := -13.0
-
-
-func ambience(name: String) -> void:
-	if name == _amb_name:
-		return
-	_amb_name = name
-	if _amb == null:
-		_amb = AudioStreamPlayer.new()
-		_amb.bus = "Master"
-		add_child(_amb)
-	var s: AudioStream = Sfx.own_file("ambience", name) if name != "" else null
-	if s == null:
-		_amb.stop()
-		return
-	if s is AudioStreamOggVorbis:
-		(s as AudioStreamOggVorbis).loop = true
-	elif s is AudioStreamMP3:
-		(s as AudioStreamMP3).loop = true
-	_amb.stream = s
-	_amb.volume_db = AMBIENCE_DB + linear_to_db(maxf(0.001, float(Settings.sfx_volume) * float(Settings.master_volume)))
-	_amb.play()
-
-
 ## A world's own track when there is a file for it ("newdomino" has no generated one), else `fallback`.
 func play_place(track: String, fallback: String) -> void:
 	if not TRACKS.has(track) and Sfx.own_file("music", track) != null:

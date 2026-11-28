@@ -217,6 +217,7 @@ static func open(parent: Node) -> SidePanel:
 	_row(aud, "Master", "Everything at once.", _slider(Settings.master_volume, func(v): Settings.master_volume = v, "click"))
 	_row(aud, "Music", "", _slider(Settings.music_volume, func(v): Settings.music_volume = v))
 	_row(aud, "Effects", "Cards, attacks, the crowd.", _slider(Settings.sfx_volume, func(v): Settings.sfx_volume = v, "card"))
+	_row(aud, "Ambience", "The air of each place: the street, the sea, the stands, the rain.", _slider(Settings.ambience_volume, func(v): Settings.ambience_volume = v))
 	# Voices in duels: one switch for all of them, then who talks.
 	var mk_switch := func(on: bool, setter: Callable) -> CheckButton:
 		var cb := CheckButton.new()

@@ -1227,7 +1227,15 @@ func toast(message: String, hold := 1.8) -> void:
 	_toast_tw = create_tween()
 	_toast_tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
 	_toast_tw.tween_interval(hold)
+	# (0.87.0) A notice that comes with no sound of its own gets a soft chime (checked once the
+	# code that raised it has had its say).
+	_toast_chime.call_deferred()
 	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
+
+
+func _toast_chime() -> void:
+	if Sfx.quiet_ms() > 180:
+		Sfx.play_own("notify", -9.0)
 
 
 ## Plain toggle buttons (a word, nothing inside, no look of their own) become choice chips.

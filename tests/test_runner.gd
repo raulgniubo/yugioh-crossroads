@@ -9,6 +9,12 @@ func _ready() -> void:
 	if OS.get_environment("ACT_SIM") != "":
 		_act_sim()
 		return
+	# ONLY_TEST=_test_sound_087 runs that one test and stops.
+	if OS.get_environment("ONLY_TEST") != "":
+		await call(OS.get_environment("ONLY_TEST"))
+		print("TESTS DONE, failures: ", failures)
+		get_tree().quit(1 if failures > 0 else 0)
+		return
 	_test_tributes()
 	_test_battle_math()
 	_test_synchro_xyz_fusion()
@@ -41,6 +47,7 @@ func _ready() -> void:
 	_test_duel_fx_083()
 	await _test_piles_0841()
 	_test_085()
+	_test_sound_087()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -12117,3 +12124,64 @@ class _FakeScene:
 
 class _FakeInst:
 	var data := {}
+
+
+## (0.87.0) The real sounds: every name in the list has a file the game can load, a missing one
+## still falls back to the tone made by code, and the air of a place is one layer, not two.
+func _test_sound_087() -> void:
+	var f := FileAccess.open("res://tools/dev/sound/sounds.json", FileAccess.READ)
+	check(f != null, "the sound list is in the project")
+	if f == null:
+		return
+	var spec: Dictionary = JSON.parse_string(f.get_as_text())
+	var bad := []
+	for row in spec["sounds"]:
+		var st := Sfx.bundled("sounds", str(row[0]))
+		if st == null or st.get_length() < 0.05 or st.get_length() > float(row[1]) + 0.45:
+			bad.append(str(row[0]))
+	check(bad.is_empty() and (spec["sounds"] as Array).size() >= 140, "every short sound has a file of a sane length (%d, wrong: %s)" % [(spec["sounds"] as Array).size(), str(bad)])
+	bad = []
+	for row in spec["ambience"]:
+		var st := Sfx.bundled("ambience", str(row[0]))
+		if st == null or st.get_length() < 20.0:
+			bad.append(str(row[0]))
+	check(bad.is_empty(), "every place has its loop of air (wrong: %s)" % str(bad))
+	bad = []
+	for row in spec["music"]:
+		var st := Sfx.bundled("music", str(row[0]))
+		if st == null or absf(st.get_length() - float(row[1])) > 3.0:
+			bad.append(str(row[0]))
+	check(bad.is_empty(), "every track is there at the length asked for (wrong: %s)" % str(bad))
+	for t in Music.TRACKS:
+		check(Sfx.bundled("music", str(t)) != null, "the track %s has a real file" % t)
+	# The names the game asks for by hand.
+	for shape in ["stream", "orb", "thunder", "fist", "slash", "dive", "sonic", "petals", "multi", "jaws"]:
+		check(Sfx.has_own("sig_" + shape), "the named attacks in the %s shape have a sound" % shape)
+	var keys := {}
+	for pair in StrikeFx.CARD_SOUNDS:
+		keys[str(pair[1])] = true
+	check(StrikeFx.sound_key("Mirror Force") == "mirror_force" and StrikeFx.sound_key("Raigeki Break") == "typhoon" and StrikeFx.sound_key("Pot of Greed") == "", "a card finds the sound of its own look, and a card with none finds nothing")
+	for k in keys:
+		check(Sfx.has_own("st_" + str(k)), "the Spell / Trap look %s has a sound" % k)
+	for nm in ["ace_enter", "boss_enter", "fate_draw", "attack_stopped", "gone_burn", "gone_splash", "gone_blow", "gone_crumble", "gone_rise", "gone_sink", "notify", "purchase", "deck_save", "star_chip", "unlock"]:
+		check(Sfx.has_own(nm), "%s has a sound" % nm)
+	# No file: nothing breaks, and the caller is told so it can use its tones.
+	check(not Sfx.has_own("no_such_sound_0870") and not Sfx.play_own("no_such_sound_0870"), "a sound with no file says so instead of failing")
+	Sfx.play("no_such_sound_0870")
+	Sfx.play_or("no_such_sound_0870", "click", -40.0)
+	# Looping: music loops except the two endings; the air loops.
+	check((Music._own_track("duel") as AudioStreamOggVorbis).loop and not (Music._own_track("victory") as AudioStreamOggVorbis).loop, "duel music loops, the victory fanfare plays once")
+	var air := Sfx._own_loop("satellite")
+	check(air is AudioStreamOggVorbis and (air as AudioStreamOggVorbis).loop, "the air of Satellite is a real loop")
+	check(Sfx._own_loop("engine") == null, "an engine keeps the loop made by code (its pitch follows the speed)")
+	# One layer of air: asking for it twice or for another one never leaves two playing.
+	Sfx.ambience("satellite", -40.0)
+	Sfx.ambience("sea", -40.0)
+	var live := 0
+	for ap in Sfx._amb:
+		if (ap as AudioStreamPlayer).playing and (ap as AudioStreamPlayer).stream == Sfx._own_loop("sea"):
+			live += 1
+	check(live == 1 and Sfx._amb_name == "sea", "the air of the new place takes over from the old one")
+	check(AudioServer.get_bus_index("Ambience") >= 0 and AudioServer.get_bus_send(AudioServer.get_bus_index("Ambience")) == &"SFX", "the air has its own volume, under Effects")
+	check((Sfx._amb[Sfx._amb_on] as AudioStreamPlayer).bus == &"Ambience", "the air of a place plays on the Ambience volume")
+	Sfx.ambience("")

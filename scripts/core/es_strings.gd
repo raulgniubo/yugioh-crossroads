@@ -631,6 +631,8 @@ const ES := {
 	"Master": "General",
 	"Music": "Música",
 	"Effects": "Efectos",
+	"Ambience": "Ambiente",
+	"The air of each place: the street, the sea, the stands, the rain.": "El aire de cada lugar: la calle, el mar, las gradas, la lluvia.",
 	"Settings": "Ajustes",
 	"Gameplay": "Juego",
 	"Animation speed": "Velocidad de animación",

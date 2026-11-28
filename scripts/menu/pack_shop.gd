@@ -440,6 +440,7 @@ func _open(pack: Dictionary, n := 1) -> void:
 	var lift := w.create_tween()
 	lift.tween_property(w, "position:y", 0.0, 0.18).set_ease(Tween.EASE_OUT)
 	Sfx.play("whoosh", -6.0, 1.3)
+	Sfx.play_own("purchase", -7.0)
 	await lift.finished
 	w.modulate.a = 0.0
 	var seen := before.duplicate()

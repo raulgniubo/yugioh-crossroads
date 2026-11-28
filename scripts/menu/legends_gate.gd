@@ -266,6 +266,7 @@ func _after(id: String, side: int, won: bool) -> void:
 			Collection.decks_owned.append(deck)
 			Collection.save()
 			words.append(Loc.t("New deck on your shelf: %s (Free Duel and online)") % Loc.t(CardData.deck_name(deck)))
+			Sfx.play_own("unlock", -3.0)
 	if not words.is_empty():
 		Sfx.play("quest", -3.0)
 		Router.toast("\n".join(words), 6.0)

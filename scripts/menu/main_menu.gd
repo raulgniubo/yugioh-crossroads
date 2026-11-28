@@ -33,7 +33,6 @@ func _ready() -> void:
 	theme = UITheme.build()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Music.play("menu")
-	Music.ambience("")
 	Sfx.ambience("")
 	Pad.walk_mode = false
 	Pad.both_sticks = false

@@ -142,7 +142,6 @@ func _ready() -> void:
 			if district.has("map"):
 				mp.layout = district["map"]
 	Music.play_place(str(Router.roam.get("district", "domino")), {"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
-	Music.ambience(str(Router.roam.get("district", "domino")))
 	Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), str(city.tod) if city else "day")
 	Pad.walk_mode = true
 	Pad.both_sticks = false
@@ -1586,7 +1585,6 @@ func travel_card(key: String) -> void:
 
 func _outdoor_sound() -> void:
 	Music.play_place(str(Router.roam.get("district", "domino")), {"": "city", "academy": "academy"}.get(str(district.get("builder", "")), str(district.get("theme", "city"))))
-	Music.ambience(str(Router.roam.get("district", "domino")))
 	Sfx.world_air(str(Router.roam.get("district", "domino")), str(district.get("builder", "")), str(district.get("theme", "")), str(city.tod) if city else "day")
 
 

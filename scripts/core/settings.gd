@@ -16,6 +16,7 @@ var fs_resolution := Vector2i.ZERO   # in fullscreen: the size the 3D picture is
 var master_volume := 0.8
 var music_volume := 0.7
 var sfx_volume := 0.8
+var ambience_volume := 0.8      # (0.87.0) the air of a place: street, sea, crowd, rain
 ## Voices in duels (0.62.0): the master switch, how loud, and who talks.
 var voices_on := true
 var voice_volume := 0.9
@@ -504,6 +505,7 @@ func load_settings() -> void:
 	master_volume = cfg.get_value("audio", "master", master_volume)
 	music_volume = cfg.get_value("audio", "music", music_volume)
 	sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
+	ambience_volume = cfg.get_value("audio", "ambience", ambience_volume)
 	voices_on = bool(cfg.get_value("audio", "voices", voices_on))
 	voice_volume = cfg.get_value("audio", "voice", voice_volume)
 	voice_opp = bool(cfg.get_value("audio", "voice_opp", voice_opp))
@@ -596,6 +598,7 @@ func save_settings() -> void:
 	cfg.set_value("audio", "master", master_volume)
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
+	cfg.set_value("audio", "ambience", ambience_volume)
 	cfg.set_value("audio", "voices", voices_on)
 	cfg.set_value("audio", "voice", voice_volume)
 	cfg.set_value("audio", "voice_opp", voice_opp)
@@ -698,12 +701,18 @@ func _ensure_buses() -> void:
 			var idx := AudioServer.bus_count - 1
 			AudioServer.set_bus_name(idx, bus_name)
 			AudioServer.set_bus_send(idx, "Master")
+	# (0.87.0) The air of a place has its own slider. It sits under Effects, so that one still turns it down too.
+	if AudioServer.get_bus_index("Ambience") == -1:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, "Ambience")
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "SFX")
 
 
 func _apply_audio() -> void:
 	_set_bus("Master", master_volume)
 	_set_bus("Music", music_volume)
 	_set_bus("SFX", sfx_volume)
+	_set_bus("Ambience", ambience_volume)
 	_set_bus("Voice", voice_volume)
 
 
