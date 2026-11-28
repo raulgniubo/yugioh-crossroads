@@ -1681,6 +1681,9 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	spr.position = at + Vector3(0, h * 0.55, 0)
 	spr.modulate = Color(1.1, 1.2, 1.3, 0.0)
 	spr.scale = Vector3(0.15, 0.02, 0.15)
+	# (0.84.1) The one arriving is the one to look at: it is drawn over the pictures of the monsters
+	# already standing on the field (MonsterHolo draws at 0, 1 and 2), never under them.
+	spr.render_priority = 4
 	add_child(spr)
 	# A thin glowing frame behind the art reads as a "projected" monster.
 	var glow := Sprite3D.new()
@@ -1690,6 +1693,7 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 	glow.pixel_size = spr.pixel_size * 1.06
 	glow.modulate = Color(col.r * 2.0, col.g * 2.0, col.b * 2.0, 0.0)
 	glow.position = Vector3(0, 0, -0.02)
+	glow.render_priority = 3
 	spr.add_child(glow)
 	var beam := _beam(at, big)
 	if EchoFx.is_echo(int(inst.id)):
@@ -1702,6 +1706,7 @@ func hologram(inst, at: Vector3, force_big := false) -> void:
 			ech.pixel_size = spr.pixel_size
 			ech.modulate = Color(0.5, 0.92, 1.0, 0.0)
 			ech.position = at + Vector3(sx * h * 0.42, h * 0.55, -0.05)
+			ech.render_priority = 3
 			add_child(ech)
 			var et := create_tween()
 			et.tween_property(ech, "modulate:a", 0.55, Settings.t(0.2))
@@ -3001,7 +3006,18 @@ func remove_from_banished(inst) -> void:
 			if gc.inst == inst:
 				pile.erase(gc)
 				gc.queue_free()
+				_restack(pile)
 				return
+
+
+## Every card of a pile at its own height, bottom to top. (0.84.1: a card that left the middle of a
+## pile used to leave a gap, and the next one to arrive landed at the very height of the card
+## already on top: the two faces fought for the same spot and the pile flickered between them.)
+func _restack(pile: Array) -> void:
+	for k in pile.size():
+		var gc = pile[k]
+		if gc != null and is_instance_valid(gc):
+			(gc as Card3D).position.y = 0.02 + k * 0.015
 
 
 func _add_to_banished(inst) -> void:
@@ -3014,6 +3030,11 @@ func _add_to_banished(inst) -> void:
 	c.hovered.connect(func(card, inside): card_hovered.emit(card, inside))
 	add_child(c)
 	var pile: Array = _ban_cards[p]
+	for old_b in pile.duplicate():
+		if old_b.inst == inst:          # (never two pictures of the one card in a pile)
+			pile.erase(old_b)
+			old_b.queue_free()
+	_restack(pile)
 	var y := 0.02 + pile.size() * 0.015
 	c.transform = Transform3D(table_basis(p, true, true) * Basis(Vector3.BACK, _rng.randf_range(-0.14, 0.14)), banish_pos(p) + Vector3(0, y, 0))
 	c.set_glow(true, BANISH_COLOR)
@@ -3021,8 +3042,7 @@ func _add_to_banished(inst) -> void:
 	if pile.size() > 3:
 		var old: Card3D = pile.pop_front()
 		old.queue_free()
-		for k in pile.size():
-			(pile[k] as Card3D).position.y = 0.02 + k * 0.015
+	_restack(pile)
 	var bl: Label3D = _ban_labels[p]
 	if bl and bl.modulate.a < 0.5:
 		create_tween().tween_property(bl, "modulate:a", 0.9, Settings.t(0.4))
@@ -3099,6 +3119,7 @@ func remove_from_gy(inst) -> void:
 			if gc.inst == inst:
 				pile.erase(gc)
 				gc.queue_free()
+				_restack(pile)
 				return
 
 
@@ -3388,6 +3409,11 @@ func _add_to_gy(inst) -> void:
 	c.clicked.connect(func(_c): pile_clicked.emit(p))
 	add_child(c)
 	var pile: Array = _gy_cards[p]
+	for old_g in pile.duplicate():
+		if old_g.inst == inst:          # (never two pictures of the one card in a pile)
+			pile.erase(old_g)
+			old_g.queue_free()
+	_restack(pile)
 	var y := 0.02 + pile.size() * 0.015
 	var jitter := _rng.randf_range(-0.06, 0.06)
 	c.transform = Transform3D(table_basis(p, true, true) * Basis(Vector3.BACK, jitter), gy_pos(p) + Vector3(0, y, 0))
@@ -3395,9 +3421,7 @@ func _add_to_gy(inst) -> void:
 	if pile.size() > 3:
 		var old: Card3D = pile.pop_front()
 		old.queue_free()
-		for k in pile.size():
-			var gc: Card3D = pile[k]
-			gc.position.y = 0.02 + k * 0.015
+	_restack(pile)
 
 
 # ------------------------------------------------------------------ stats & aiming

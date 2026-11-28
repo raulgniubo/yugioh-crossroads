@@ -1923,3 +1923,15 @@ mirror force, cartas como esas y otras les podemos hacer animaciones buenas".
   Prison, Burst Stream, Dark Magic Attack, Thousand Knives, Dian Keto. NOT seen: Compulsory Evacuation and
   Hinotama (the reel's frames fell between them; no script errors), slash / storm / photon figures, the other 84
   entrances, any of it inside a real duel (the films use the demo, with placeholder card art), Windows and Mac.
+
+## 0.84.1 (Nov 27 night): two things Raul saw while playing 0.84.0
+- **The monster arriving is drawn in front** (board.hologram): its Sprite3D drew at priority 0 and the standing
+  MonsterHolos at 0 / 1 / 2 with no depth written, so the pictures of monsters already on the field showed
+  THROUGH the big one. Now the arriving picture is 4 (its glow and Lumen's echoes 3). FxDemo `holo_front` films
+  it (FX_SCALE=0.2, skip 1.45, gap 0.13: later frames catch the name banner).
+- **A Graveyard flickering between its two top cards**: `_add_to_gy` put a card at gy_pos.y (0.01) + 0.02 + n *
+  0.015 while the restack used 0.02 + k * 0.015, and `remove_from_gy` did not restack: after one card left, the
+  next landed at the exact height of the card on top and the two faces fought. `_restack(pile)` now runs after
+  every arrival and departure, for Graveyard and banished, and a card is never in a pile twice. Test
+  `_test_piles_0841` builds a DuelBoard headless (it works without the card database).
+- The opponent's Deck showing a picture on top is their sleeve (Cards.back_for_char), not a face-up card.

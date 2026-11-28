@@ -39,6 +39,7 @@ func _ready() -> void:
 	await _test_cards_gate()
 	_test_lumen_081()
 	_test_duel_fx_083()
+	await _test_piles_0841()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -11986,3 +11987,43 @@ func _test_lumen_081() -> void:
 			untold.append(s)
 	check(untold.is_empty(), "the new words about Lumen's cards have their Spanish (%s)" % str(untold))
 
+
+
+## (0.84.1) A card leaves the middle of a Graveyard and another arrives: no two cards of the pile may
+## sit at the same height (their faces flickered, Raul saw it on Mako's Graveyard), and the picture
+## of a monster arriving is drawn over the pictures of the ones already standing.
+func _test_piles_0841() -> void:
+	var b := DuelBoard.new()
+	add_child(b)
+	await get_tree().process_frame
+	var st := DuelState.new()
+	var cards: Array = []
+	for k in 5:
+		cards.append(st._make(46986414, 1))
+	b._add_to_gy(cards[0])
+	b._add_to_gy(cards[1])
+	b.remove_from_gy(cards[0])
+	b._add_to_gy(cards[2])
+	check(_pile_heights_differ(b._gy_cards[1]) and (b._gy_cards[1] as Array).size() == 2, "a card arriving after one left the Graveyard does not land at the height of the top card")
+	b._add_to_gy(cards[3])
+	b._add_to_gy(cards[4])
+	b._add_to_gy(cards[4])
+	check(_pile_heights_differ(b._gy_cards[1]) and (b._gy_cards[1] as Array).size() == 3, "the Graveyard shows three cards at most, each at its own height, and never the same card twice")
+	b._add_to_banished(cards[0])
+	b._add_to_banished(cards[1])
+	b.remove_from_banished(cards[0])
+	b._add_to_banished(cards[2])
+	check(_pile_heights_differ(b._ban_cards[1]), "the banished pile keeps its cards apart too")
+	var src := FileAccess.get_file_as_string("res://scripts/duel/duel_board.gd")
+	check(src.contains("spr.render_priority = 4") and MonsterHolo != null, "the monster arriving is drawn over the ones already standing")
+	b.queue_free()
+
+
+func _pile_heights_differ(pile: Array) -> bool:
+	var seen := {}
+	for gc in pile:
+		var y := snappedf((gc as Node3D).position.y, 0.001)
+		if seen.has(y):
+			return false
+		seen[y] = true
+	return true

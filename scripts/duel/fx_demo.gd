@@ -79,6 +79,20 @@ static func _play(scene, board, st, name: String) -> void:
 			await scene.get_tree().create_timer(1.0).timeout
 		# The draw everything rides on (fate_draw: yours, fate_draw_opp: theirs), and a hit on the Life
 		# Points bar (lp_hit), and the entrance of one of the newer aces (ace_new, FX_ACE=<card name>).
+		# (0.84.1) A big monster arrives between monsters that already stand there (theirs behind it,
+		# yours either side): its picture must be the one in front.
+		"holo_front":
+			for spec in [[AI, 1], [AI, 2], [AI, 3], [ME, 1], [ME, 3]]:
+				var hm = _mk(st, "Dark Magician", spec[0])
+				st.players[spec[0]].field[spec[1]] = hm
+				var hc: Card3D = board._new_card(hm)
+				hc.transform = Transform3D(board.table_basis(spec[0], true, true), board.monster_zone_pos(spec[0], spec[1]) + Vector3(0, 0.02, 0))
+			board.sync_holos(st)
+			await scene.get_tree().create_timer(1.3).timeout
+			var bigm = _mk(st, "Blue-Eyes White Dragon", ME)
+			print("HOLO FRONT")
+			await board.hologram(bigm, board.monster_zone_pos(ME, 2), true)
+			await scene.get_tree().create_timer(0.5).timeout
 		# (0.84.0) The set pieces of the famous Spells and Traps: st_card, FX_CARD=<card name>. Three of
 		# theirs stand there (the middle one in Defense), one of them attacking; one of yours faces them.
 		"st_card":
