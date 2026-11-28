@@ -28,7 +28,7 @@ var level := 2             # how the opponent thinks: 0 the plain policy, 1 Easy
 var _turn_think := 0       # ms it has thought this turn
 var _turn_seen := -1
 var _turn_asks := 0
-const TURN_BUDGET := [0, 6000, 14000, 28000]     # after this much thinking in one turn it hurries
+const TURN_BUDGET := [0, 6000, 14000, 42000]     # after this much thinking in one turn it hurries (0.85.0: Hard 28 -> 42 s, a long turn is where it should shine)
 const NAMES := ["Basic", "Easy", "Normal", "Hard"]
 var _log := "--ocg-log" in OS.get_cmdline_user_args()
 ## Dev (with --human-test): picks on the table and zone choices are made too, at random, so
@@ -417,8 +417,8 @@ func _cpu_answer(m: Dictionary) -> PackedByteArray:
 	if _turn_asks > 140:
 		# A very long turn: it still thinks (and keeps its common sense), only quicker. Before 0.76.0
 		# it fell back to a placeholder that used every card it could, on anything.
-		lv_now = 1
-		cap = 200
+		lv_now = 1 if level < 3 else 2      # (0.85.0: Hard keeps thinking as Normal does there, not as Easy)
+		cap = 200 if level < 3 else 380
 	var t0 := Time.get_ticks_msec()
 	OcgCore.think_start(d.handle, lv_now, cap, randi())
 	var shown := false

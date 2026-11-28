@@ -9195,4 +9195,7 @@ const ES := {
 	"It rebuilds itself": "Se reconstruye solo",
 	"Only angels fight at full strength": "Solo los ángeles pelean con toda su fuerza",
 	"Every fairy answers her": "Toda hada le responde",
+	"Report this play": "Reportar jugada",
+	"Saved. Send this file: %s": "Guardado. Manda este archivo: %s",
+	"The report could not be saved.": "No se pudo guardar el reporte.",
 }

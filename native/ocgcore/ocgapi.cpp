@@ -378,7 +378,19 @@ void OCG_DuelDeterminize(OCG_Duel ocg_duel, uint8_t team, const uint64_t* seed, 
 		return c && c->owner == team && c->current.controler == team && !c->overlay_target && !c->equiping_target
 			&& c->xyz_materials.empty() && c->counters.empty();
 	};
+	/* CROSSROADS (0.85.0), flag 32: a hand card the other side has seen stays where it is: one that
+	   came back from the field, the Graveyard or the banished pile, or was added from the Deck by an
+	   effect other than a draw (a search shows the card). */
+	auto seen = [](card* c) {
+		if(c->previous.location & (LOCATION_MZONE | LOCATION_SZONE | LOCATION_GRAVE | LOCATION_REMOVED))
+			return (c->previous.position & POS_FACEUP) != 0 || (c->previous.location & (LOCATION_GRAVE | LOCATION_REMOVED)) != 0;
+		if((c->previous.location & LOCATION_DECK) && (c->current.reason & REASON_EFFECT) && !(c->current.reason & REASON_DRAW))
+			return true;
+		return false;
+	};
 	for(auto* c : pl.list_hand) {
+		if((flags & 32) && seen(c))
+			continue;
 		if(hidden(c) && !(c->current.position & POS_FACEUP) && !c->is_affected_by_effect(EFFECT_PUBLIC)) {
 			if(flags & 1) targets.push_back(cards.size());
 			cards.push_back(c); kinds.push_back(0);

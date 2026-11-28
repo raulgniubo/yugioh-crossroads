@@ -79,6 +79,38 @@ static func _play(scene, board, st, name: String) -> void:
 			await scene.get_tree().create_timer(1.0).timeout
 		# The draw everything rides on (fate_draw: yours, fate_draw_opp: theirs), and a hit on the Life
 		# Points bar (lp_hit), and the entrance of one of the newer aces (ace_new, FX_ACE=<card name>).
+		# (0.85.0) The named attacks (SigFx): sig_reel, FX_CARD="Name|Name|..." (1.7 s each, from your
+		# middle zone at their middle zone). tribute_show: FX_N monsters are given and the lights go in.
+		"sig_reel":
+			var tm0 = _mk(st, "Dark Magician", AI)
+			st.players[AI].field[2] = tm0
+			var tc0: Card3D = board._new_card(tm0)
+			tc0.transform = Transform3D(board.table_basis(AI, true, true), board.monster_zone_pos(AI, 2) + Vector3(0, 0.02, 0))
+			await scene.get_tree().create_timer(0.5).timeout
+			for one in OS.get_environment("FX_CARD").split("|"):
+				var si = _mk(st, one, ME)
+				print("SIG ", one, " has=", SigFx.has(si))
+				var a0: Vector3 = board.monster_zone_pos(ME, 2)
+				var b0: Vector3 = board.monster_zone_pos(AI, 2)
+				SigFx.travel(board, si, a0, b0, 0.2)
+				await scene.get_tree().create_timer(0.2).timeout
+				SigFx.impact(board, si, a0, b0)
+				await scene.get_tree().create_timer(1.5).timeout
+		"tribute_show":
+			var tn := maxi(1, int(OS.get_environment("FX_N")))
+			var given: Array = []
+			for z in tn:
+				var gm2 = _mk(st, ["Dark Magician", "Blue-Eyes White Dragon", "Summoned Skull"][z % 3], ME)
+				st.players[ME].field[z + 1] = gm2
+				var gc2: Card3D = board._new_card(gm2)
+				gc2.transform = Transform3D(board.table_basis(ME, true, true), board.monster_zone_pos(ME, z + 1) + Vector3(0, 0.02, 0))
+				given.append(gm2)
+			await scene.get_tree().create_timer(0.5).timeout
+			print("TRIBUTE ", tn)
+			for gm3 in given:
+				await board.anim_tribute(gm3)
+			await board._consume_orbs(board.monster_zone_pos(ME, 2))
+			await scene.get_tree().create_timer(1.2).timeout
 		# (0.84.1) A big monster arrives between monsters that already stand there (theirs behind it,
 		# yours either side): its picture must be the one in front.
 		"holo_front":
@@ -118,7 +150,7 @@ static func _play(scene, board, st, name: String) -> void:
 				if StrikeFx.aims(one):
 					StrikeFx.card_on(board, one, ME, board.monster_zone_pos(AI, 1) + Vector3(0, 0.02, 0))
 				else:
-					var played := StrikeFx.card(board, one, ME, {"attacker": board.monster_zone_pos(AI, 1), "summoned": board.monster_zone_pos(AI, 3)})
+					var played := StrikeFx.card(board, one, ME, {"attacker": board.monster_zone_pos(AI, 1), "summoned": board.monster_zone_pos(AI, 3), "mine": board.monster_zone_pos(ME, 2)})
 					if not played:
 						print("STCARD has no look: ", one)
 				await scene.get_tree().create_timer(2.1).timeout

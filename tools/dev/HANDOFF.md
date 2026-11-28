@@ -1935,3 +1935,75 @@ mirror force, cartas como esas y otras les podemos hacer animaciones buenas".
   every arrival and departure, for Graveyard and banished, and a card is never in a pile twice. Test
   `_test_piles_0841` builds a DuelBoard headless (it works without the card database).
 - The opponent's Deck showing a picture on top is their sleeve (Cards.back_for_char), not a face-up card.
+
+## 0.85.0 (Nov 28, overnight): difficulty, decks without the generic block, named attacks, a second batch of looks
+Raul left a list for the night: (1) the three levels play as well as each should and never do stupid things,
+(2) the decks stop carrying the same ten generic cards, (3) the next batch of animations, (4) Tribute / Synchro / Xyz.
+### The opponent (native/ai.hpp, rebuilt for linux, macos, windows)
+- **What was wrong with Easy**: its "slip" (20% of the time the second idea, if within 150) Set a Raigeki with
+  nothing to hit and turned an attacker to Defense on an open field. It failed 3 of 40 boards one run in three.
+- **Levels now** (level_of): Easy = 1 deal, 5 answers, ONE turn ahead, no slip, a little noise (60) between answers
+  that come out the same. Normal = as before (6 deals, 10 answers, 2 turns, finishing blow 350 ms). Hard = 12
+  deals, 16 answers, 2 turns, second look at its 3 best, finishing blow 900 ms, and deal flag 32:
+  `OCG_DuelDeterminize` (ocgcore/ocgapi.cpp, a Crossroads addition) leaves in place the hand cards you have shown
+  (back from field / Graveyard / banished, or added from the Deck by an effect that is not a draw).
+- **Measured** (tests/ocg_match, mirror = the same deck on both sides, 4 decks x 6 duels): with different decks
+  the deck decides (all four old / new pairings came out 7-5: the same pairs won). Mirror: Normal vs Easy 12-12;
+  a trial Normal three turns ahead vs Normal 5-7 (dropped); a trial Hard (3 turns ahead, second look at 4) beat
+  Normal 17-7 BUT failed two boards (no attack on a weaker monster, Raigeki Set at nothing): NOT shipped. The
+  second look takes max(value, best next) and undoes the soft penalties; start there. The shipped Hard's edge
+  over Normal is NOT measured. In Story and the Academy the level also moves the deck version
+  (Saves.story_difficulty = cpu_level - 1 steps), which is the bigger part of the difference.
+  `pkill -f ocg_match` from a script whose own text holds "ocg_match" kills that script: use pgrep / kill by pid.
+- **evaluate(b, me, next)**: `fight_edge` = what the side whose turn starts can take in battle as the table stands
+  (so a one-turn-ahead Easy still sees its weak monster in Attack under a bigger one); +110 / -130 for a face-up
+  effect monster. OCG_BASELINE=1 still gives the 0.76.0 opponent.
+- **Common sense** (all levels): CS_IDLE (soft, -450): a plain Spell Set with fewer than 6 in hand; a Battle
+  Phase entered with nothing that could fight. CS_LEAVE_FREE also for turning an attacker to Defense with their
+  field open. play_match counts "idle" too.
+- ocg_table: Hard's turn budget 28 -> 42 s; past 140 asks in a turn Hard thinks as Normal (380 ms), not as Easy.
+- tests/ocg_boards.gd: 52 boards (12 new "Floor:" ones); BOARD_LOG=1 prints the failing runs; OCG_TRACE=1 prints
+  every decision's candidates. 52 of 52 at levels 1, 2, 3 (3 runs each). "Typhoon is not used on its own Set card"
+  now accepts the Typhoon being Set (a Quick-Play).
+- **Report this play** (duel menu, not online): PlayReport.write -> <saves>/play_reports/play_<date>.txt with the
+  two fields, your hand, counts, the last 30 log lines and the opponent's notes on its last 14 decisions
+  (OcgDuel.cpu_notes, from the "9:" log lines). Turn one into a board in tests/ocg_boards.gd.
+- The line "Plays aggressive / defensive / Sets traps" in Free Duel is gone: it came from the old DuelAI and
+  the rules engine has no styles.
+### Decks (/home/claude/work/decks85/regen.py, report.txt, card_data.before.gd)
+- Measured before: of 73 show decks Monster Reborn was in 73, Pot of Greed 70, Call of the Haunted 70, Mirror
+  Force 67, Magic Cylinder 66, Negate Attack 66, Sakuretsu Armor 63; about 10 generic cards of 40 per deck.
+- Now: a show deck keeps at most 4 (a theme deck 5): the ones its duelist is known for (KEEP), then the ones the
+  fewest other decks kept (none in more than a fifth of the show decks). Freed places: a second copy of the
+  deck's own Spells / Traps, then a card of its era from a wide pool (POOLS), least used first. 174 of 229 decks
+  changed; totals unchanged; starters and the 10 competitive DECKS untouched. Raul: a generic card a deck really
+  needs may stay; what he does not want is the same block in all of them.
+### Animations
+- **SigFx** (scripts/duel/sig_fx.gd): the named attacks of 49 main monsters as shapes of light (stream, orb,
+  thunder, fist, slash, dive, sonic, petals, multi, jaws); board's attack, finisher and old attack path ask
+  SigFx.has(inst) first and skip the element's travel / the Type's strike for those.
+- **StrikeFx second batch**: Feather Duster / Heavy Storm / Giant Trunade / Cold Wave over the whole back row,
+  Super Polymerization, De-Fusion (it used to play the Fusion look: its name contains "fusion"), Power Bond,
+  Limiter Removal, the Virus cards, Sakuretsu Armor (spikes on the attacker), Negate Attack, Threatening Roar,
+  Gravity Bind family, Scapegoat, Card of Sanctity, Skill Drain, Royal Decree / Imperial Order, Final Countdown,
+  Destiny Board; from the hand: Honest (ctx "mine": your monster in the fight), Kuriboh, Battle Fader, Swift
+  Scarecrow, Ash Blossom; on the target: Effect Veiler, Shrink, Raigeki Break, Phoenix Wing Wind Blast, Offerings
+  to the Doomed. A `match` with several lines cannot sit inside a lambda (parse error): bind a method.
+- **Tribute** (board.anim_tribute / _consume_orbs): the card lifts in its Attribute's color and bursts; its light
+  (FxOrb, with a tail) waits over the field; the lights spiral into the zone; 1 quiet, 2 shake, 3 light the hall.
+- **Synchro**: the camera looks up the column of rings from the floor; each ring has a soft wider one round it.
+  **Xyz**: the lights that went into the galaxy climb back out round the monster's place.
+- New class_name scripts (SigFx, PlayReport) need `godot --headless --import` in the repo and the
+  .godot/global_script_class_cache.cfg copied to yc_test, or the test copy does not know them.
+- FxDemo: sig_reel (FX_CARD="A|B"), tribute_show (FX_N), st_card reels. /tmp/stbatch.sh takes DEMO=.
+- Checks: test_runner 0 failures, replay check 3 of 3, boards 52 of 52 at levels 1 and 3 with the shipped engine
+  (level 2's settings did not change after its 52 of 52). Filmed and looked at: named attacks (two reels of
+  seven; the first again after the rings were toned down), Tribute x3, the first Spell / Trap reel (Feather
+  Duster, Heavy Storm, Super Polymerization, De-Fusion, Power Bond, Virus), the Synchro's low camera, the Xyz.
+  Filmed, no script errors, NOT looked at: the reels with Sakuretsu Armor, Negate Attack, Threatening Roar,
+  Gravity Bind, Scapegoat, Card of Sanctity, Skill Drain, Royal Decree, Final Countdown, Destiny Board, Honest,
+  Kuriboh, Battle Fader, Swift Scarecrow, Ash Blossom, Effect Veiler, Shrink. NOT run: Windows, Mac, a duel by
+  hand, the Report button on a real duel (its text is tested on a made-up table), the decks one by one in duels
+  (24 CPU duels over the rewritten decks ended with a winner and no refused answers).
+- The update zip now carries ocgbridge.windows.x86_64.dll (the engine changed): it must be extracted over the
+  game folder like the .pck.

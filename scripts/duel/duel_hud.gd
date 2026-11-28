@@ -2805,6 +2805,15 @@ func show_log() -> void:
 
 
 ## A line for the card log only (nothing shows on the table). `p` -1: both / the table.
+## The last lines of the duel log, as text (for a play report).
+func log_tail(n: int) -> Array:
+	var out: Array = []
+	for i in range(maxi(0, _log.size() - n), _log.size()):
+		var l: Array = _log[i]
+		out.append("T%s %s %s %s" % [str(l[3]), "you " if int(l[0]) == 0 else "them", str(l[1]), str(l[2])])
+	return out
+
+
 func log_line(p: int, icon: String, text: String) -> void:
 	_log.append([p, icon, text, _pill_turn])
 	if _log.size() > 300:
@@ -3479,6 +3488,9 @@ func show_pause() -> void:
 	_overlay_button(v, "Settings", "settings")
 	if not replay_mode:
 		_overlay_button(v, "Surrender", "surrender")
+	if not replay_mode and not Router.duel_config.get("net", false):
+		# (0.85.0) The opponent did something odd: write down the table so it can be looked at later.
+		_overlay_button(v, "Report this play", "report_play")
 	# Admin mode: end the duel either way on the spot (for testing what comes after it).
 	if Saves.admin and not replay_mode and not Router.duel_config.get("net", false):
 		_overlay_button(v, "Admin: win this duel", "admin_win")

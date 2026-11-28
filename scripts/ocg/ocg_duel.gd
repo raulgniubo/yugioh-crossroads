@@ -15,6 +15,7 @@ const R_COST := 0x80
 const R_RULE := 0x400
 const R_DISCARD := 0x4000
 
+var cpu_notes: Array = []      # the thinking opponent's notes on its last decisions (for a play report)
 var st: DuelState
 var handle := 0
 var swap := false           # the engine's player 0 is our player 1 (they go first)
@@ -229,6 +230,11 @@ func advance() -> Array:
 	for s in lg.get("logs", []):
 		if not str(s).begins_with("9:"):     # (9: the thinking opponent's own notes, not an error)
 			_err("script: " + str(s))
+		elif str(s).length() > 4:
+			# (0.85.0) Its last decisions are kept for "Report this play".
+			cpu_notes.append(str(s).substr(2, 700))
+			if cpu_notes.size() > 14:
+				cpu_notes.pop_front()
 	for s in lg.get("missing", []):
 		_err("missing script: " + str(s))
 	return events

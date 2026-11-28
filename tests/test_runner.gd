@@ -40,6 +40,7 @@ func _ready() -> void:
 	_test_lumen_081()
 	_test_duel_fx_083()
 	await _test_piles_0841()
+	_test_085()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -12027,3 +12028,78 @@ func _pile_heights_differ(pile: Array) -> bool:
 			return false
 		seen[y] = true
 	return true
+
+
+## (0.85.0) The named attacks, the second batch of Spell / Trap looks, the play report, and the
+## decks without the block of generic cards every one of them carried.
+func _test_085() -> void:
+	var whole_db := CardData.NAME_TO_ID.has("dark magician")
+	var shapes := ["stream", "orb", "thunder", "fist", "slash", "dive", "sonic", "petals", "multi", "jaws"]
+	var used := {}
+	for nm in SigFx.ATTACKS:
+		var lk: Array = SigFx.ATTACKS[nm]
+		used[str(lk[0])] = true
+		check(shapes.has(str(lk[0])) and lk.size() == 5 and str(nm) == str(nm).to_lower(), "the named attack of %s is a shape the table can draw" % nm)
+		if whole_db:
+			check(CardData.NAME_TO_ID.has(str(nm)), "%s (a named attack) is a card of the game" % nm)
+	check(SigFx.ATTACKS.size() >= 45 and used.size() == shapes.size(), "45 monsters or more have an attack of their own, in all ten shapes (%d)" % SigFx.ATTACKS.size())
+	for aimed in ["Effect Veiler", "Shrink", "Raigeki Break", "Phoenix Wing Wind Blast", "Offerings to the Doomed"]:
+		check(StrikeFx.aims(aimed), "%s has its look on the card it targets" % aimed)
+	var sfx_src := FileAccess.get_file_as_string("res://scripts/duel/strike_fx.gd")
+	for piece in ["_sweep_back", "_super_poly", "_defusion", "_power_bond", "_limiter", "_virus", "_sakuretsu", "_negate_attack", "_roar", "_gravity", "_scapegoat",
+			"_sanctity", "_skill_drain", "_seal", "_countdown", "_destiny_board", "_honest", "_kuriboh", "_fader", "_scarecrow", "_ash"]:
+		check(sfx_src.contains("static func %s(" % piece) and sfx_src.count(piece + "(") >= 2, "the set piece %s is written and used" % piece)
+	check(sfx_src.find('n.contains("de-fusion")') < sfx_src.find('n.contains("polymerization")'), "De-Fusion is looked for before the Fusion look that its name contains")
+	var es := TranslationServer.get_translation_object("es")
+	check(es != null and str(es.get_message("Report this play")) == "Reportar jugada", "the play report button is in Spanish")
+	check(FileAccess.get_file_as_string("res://scripts/duel/duel_hud.gd").contains('"report_play"') and FileAccess.get_file_as_string("res://scripts/duel/duel_scene.gd").contains("PlayReport.write(self)"), "the duel menu writes a play report")
+	# The play report reads a table without tripping (an empty field, a monster, a Set card).
+	var rs := DuelState.new()
+	while rs.players.size() < 2:
+		rs.players.append(DuelState.PlayerState.new())
+	if rs.players.size() == 2:
+		var fake := _FakeScene.new()
+		fake.state = rs
+		fake.hud = _FakeHud.new()
+		var rm = rs._make(46986414, 0)
+		rm.face_up = true
+		rs.players[0].field[2] = rm
+		rs.players[0].hand.append(rs._make(46986414, 0))
+		rs.players[1].gy.append(rs._make(46986414, 1))
+		var txt := PlayReport.text(fake)
+		check(txt.contains("play report") and txt.contains("YOU") and txt.contains("THEM") and txt.contains("your hand:") and txt.contains("a line of the log"), "the play report writes the table down")
+	# The decks: no show deck carries more than four of the cards that used to be in all of them, and
+	# none of those cards is in more than a quarter of the show decks.
+	var generic := ["Monster Reborn", "Pot of Greed", "Call of the Haunted", "Mirror Force", "Magic Cylinder", "Negate Attack", "Sakuretsu Armor", "Trap Hole",
+		"Mystical Space Typhoon", "Graceful Charity", "Swords of Revealing Light", "Heavy Storm", "Waboku", "Torrential Tribute", "Dark Hole"]
+	var tally := {}
+	var shows := 0
+	var worst := 0
+	for k in CardData.NAMED_DECKS:
+		if not str(k).begins_with("anime_"):
+			continue
+		shows += 1
+		var cards: Dictionary = CardData.NAMED_DECKS[k].get("cards", {})
+		var n := 0
+		var total := 0
+		for nm in cards:
+			total += int(cards[nm])
+			if generic.has(str(nm)):
+				n += int(cards[nm])
+				tally[nm] = int(tally.get(nm, 0)) + 1
+		worst = maxi(worst, n)
+		check(total == 40, "%s still has 40 cards (%d)" % [k, total])
+	check(worst <= 4, "no show deck has more than 4 of the generic cards (%d)" % worst)
+	for nm in tally:
+		check(int(tally[nm]) * 4 <= shows, "%s is in a quarter of the show decks at most (%d of %d)" % [nm, int(tally[nm]), shows])
+
+
+class _FakeHud:
+	func log_tail(_n: int) -> Array:
+		return ["a line of the log"]
+
+
+class _FakeScene:
+	var state
+	var hud
+	var ocg = null

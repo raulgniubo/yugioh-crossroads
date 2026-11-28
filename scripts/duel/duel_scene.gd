@@ -2108,6 +2108,8 @@ func _play_event(ev: Dictionary) -> void:
 			var atk_card = ev["card"]
 			var direct: bool = ev["target"] == null
 			_attack_card = atk_card
+			_attack_target = ev["target"]
+			_attack_p = p
 			_attack_ms = Time.get_ticks_msec()
 			if direct and p == ME:
 				_my_directs += 1
@@ -2819,6 +2821,11 @@ func _on_pause_action(action: String) -> void:
 			_turn_finished.emit()
 			if state.current == AI or busy:
 				_finish()
+		"report_play":
+			hud.hide_overlay()
+			var where := PlayReport.write(self)
+			hud.set_coach(Loc.t("Saved. Send this file: %s") % where if where != "" else Loc.t("The report could not be saved."))
+			get_tree().create_timer(6.0).timeout.connect(func(): hud.set_coach(""))
 		"admin_win", "admin_lose":
 			hud.hide_overlay()
 			state.winner = ME if action == "admin_win" else AI
@@ -2958,6 +2965,8 @@ var _fx_card = null        # the card whose effect was just activated (CardFx)
 var _fx_ms := 0             # when it was activated
 var _attack_card = null     # the monster whose attack is in the air (Magic Cylinder, Mirror Force answer it)
 var _attack_ms := 0
+var _attack_target = null   # ...what it is attacking (null: the duelist), and who sent it
+var _attack_p := 0
 var _summoned_card = null   # the monster that just hit the table (Bottomless Trap Hole, Torrential answer it)
 var _summoned_ms := 0
 var _fate := [-1, -1]       # the turn whose own draw is "the draw everything rides on" for each duelist (-1: none)
@@ -3039,7 +3048,16 @@ func _card_look(p: int, card, label: String) -> void:
 		var sc3 := board.card_for(_summoned_card)
 		if sc3 != null and is_instance_valid(sc3):
 			sum_at = sc3.get_meta("home", sc3.transform).origin
-	var sig := StrikeFx.card(board, str(card.data.get("name", "")), p, {"attacker": atk_at, "summoned": sum_at})
+	# (whose monster in the fight is the one who played this card's own: Honest opens its wings on that one)
+	var mine_at := Vector3.INF
+	if atk_at != Vector3.INF:
+		if _attack_p == p:
+			mine_at = atk_at
+		elif _attack_target != null:
+			var tg3 := board.card_for(_attack_target)
+			if tg3 != null and is_instance_valid(tg3):
+				mine_at = tg3.position
+	var sig := StrikeFx.card(board, str(card.data.get("name", "")), p, {"attacker": atk_at, "summoned": sum_at, "mine": mine_at})
 	var k := CardFx.kind(card, label)
 	_fx_card = card
 	_fx_kind = k

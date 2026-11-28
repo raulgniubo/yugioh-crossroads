@@ -524,11 +524,9 @@ func _refresh_slots() -> void:
 		sl["name"].text = str(info.get("name", "")).to_upper()
 		_fit_font(sl["name"], 46)
 		sl["title"].text = Loc.t(str(info.get("title", "")))
-		if side == "opp":
-			# How they play, so you know what you walk into.
-			var how: String = {"aggro": "Plays aggressive", "wall": "Plays defensive", "trap": "Sets traps"}.get(DuelAI.style_for(key), "")
-			if how != "":
-				sl["title"].text = (sl["title"].text + "   ·   " if sl["title"].text != "" else "") + Loc.t(how)
+		# (0.85.0: the line "Plays aggressive / defensive / Sets traps" is gone. It came from the old
+		# opponent (DuelAI.style_for); the rules engine that runs the duels now has no styles, so the
+		# line promised something the duel did not do.)
 		_shrink(sl["title"], 19, 14)
 		var deck_key := _deck_of(side)
 		sl["sub"].text = "%s  ·  %s" % [info.get("era", ""), _deck_words(deck_key)]

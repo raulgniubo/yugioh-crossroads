@@ -225,10 +225,46 @@ static Board read_board(Sim& s) {
 
 static double lp_worth(int lp) { if(lp <= 0) return 0.0; int v = std::min(lp, 16000); return 0.30 * v + 1600.0 * std::sqrt(v / 8000.0); }
 
-// How good the table is for `me`. Higher is better.
-static double evaluate(const Board& b, int me) {
+// (0.85.0) What the side whose turn is starting can take in battle with the table as it stands:
+// each of its attackers takes the best thing it is known to beat, and the rest go in direct if the
+// way is open. Face-down cards are not counted either way (nobody knows what they are).
+static double fight_edge(const Board& b, int mover) {
+	int other = 1 - mover;
+	std::vector<int> atk;
+	for(auto& x : b.m[mover]) if(x.there && (x.pos & 0x1) && x.atk > 0) atk.push_back(x.atk);
+	if(atk.empty()) return 0.0;
+	std::sort(atk.rbegin(), atk.rend());
+	std::vector<Mon> foes;
+	for(auto& f : b.m[other]) if(f.there) foes.push_back(f);
+	double v = 0.0; int lp = b.lp[other];
+	for(int a : atk) {
+		int best = -1; double gain = 0.0; int dmg = 0;
+		for(size_t i = 0; i < foes.size(); ++i) {
+			const Mon& f = foes[i];
+			if(!(f.pos & 0x5)) continue;
+			if(f.pos & 0x1) { if(a > f.atk) { double g = 0.95 * f.atk + 300 + 0.3 * (a - f.atk); if(g > gain) { gain = g; best = (int)i; dmg = a - f.atk; } } }
+			else if(a > f.def) { double g = 0.45 * f.def + 300; if(g > gain) { gain = g; best = (int)i; dmg = 0; } }
+		}
+		if(best >= 0) { v += gain; lp -= dmg; foes.erase(foes.begin() + best); }
+		else if(foes.empty()) { v += lp_worth(std::max(lp, 0)) - lp_worth(std::max(lp - a, 0)); lp -= a; }
+	}
+	if(lp <= 0) v += 2500.0;       // (it would be over)
+	return v;
+}
+
+// How good the table is for `me`. Higher is better. `next`: whose turn is starting (-1: not known).
+static double evaluate(const Board& b, int me, int next = -1) {
 	int op = 1 - me;
 	double v = lp_worth(b.lp[me]) - lp_worth(b.lp[op]);
+	if(!g_base) {
+		// A monster with an effect is worth more than its numbers say (and theirs is worth removing).
+		for(auto& x : b.m[me]) if(x.there && (x.pos & 0x5) && (x.type & 0x20)) v += 110;
+		for(auto& x : b.m[op]) if(x.there && (x.pos & 0x5) && (x.type & 0x20)) v -= 130;
+		// The fight that is about to happen: what the side to move can take, discounted (cards in
+		// hand and face-down can still change it).
+		if(next == me) v += 0.40 * fight_edge(b, me);
+		else if(next == op) v -= 0.55 * fight_edge(b, op);
+	}
 	for(auto& x : b.m[me]) {
 		if(!x.there) continue;
 		if(x.pos & 0x1) v += 0.95 * x.atk + 300;
@@ -656,7 +692,7 @@ static Roll rollout(Sim& s, int me, int until_turns, uint64_t rnd, int max_steps
 		if(s.winner == 1 - me) return { -1e6 + 500.0 * s.turns, true };
 		return { 0, true };
 	}
-	return { evaluate(read_board(s), me), false };
+	return { evaluate(read_board(s), me, s.turn_player), false };
 }
 
 // ---------------------------------------------------------------- the answers worth trying
@@ -741,7 +777,7 @@ static std::vector<Cand> candidates(Sim& s, const JV& m, size_t cap) {
 }
 
 // ---------------------------------------------------------------- deciding
-struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int deal; double bias; int mode; double margin; int threads; int deep; int finish; };
+struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int deal; double bias; int mode; double margin; int threads; int deep; int finish; double noise = 0.0; };
 // worlds: how many different deals of your hidden cards each answer is tried against (at most).
 // horizon: how many more turns start before a line is scored. deal: what is re-dealt (see
 // OCG_DuelDeterminize). margin: how much better than the steady answer another has to be.
@@ -749,9 +785,23 @@ struct Level { int worlds; size_t cap; int ms; int horizon; double slip; int dea
 static Level level_of(int level) {
 	Level lv;
 	switch(level) {
-	case 1: lv = { 2, 6, 700, 2, 0.20, 31, 90.0, 1, 0.0, 2, 0, 0 }; break;        // Normal
-	case 2: lv = { 6, 10, 1600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 0, 350 }; break;    // Hard
-	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3, 900 }; break;  // Extreme
+	// (0.85.0) Each level has a way of playing, not only a clock:
+	//   Easy    plays its own turn well and looks no further: one turn ahead, a few answers, one
+	//           guess at what you hold. Between answers that come out about the same it does not always take the
+	//           first (noise), but it no longer takes a second idea that is plainly worse (the old
+	//           "slip" Set a Raigeki with nothing to hit and turned an attacker to Defense).
+	//   Normal  two turns ahead, more deals, looks for the finishing blow.
+	//   Hard    twice the deals and more answers, a second look at its best ideas, a long hunt for
+	//           the finishing blow, and it remembers the cards you have shown it (deal 63: a card
+	//           you searched or took back to your hand stays where it is when your hand is re-dealt).
+	case 1: lv = { 2, 6, 700, 2, 0.20, 31, 90.0, 1, 0.0, 2, 0, 0 }; if(!g_base) { lv.worlds = 1; lv.cap = 5; lv.horizon = 1; lv.slip = 0.0; lv.noise = 60.0; } break;      // Easy
+	case 2: lv = { 6, 10, 1600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 0, 350 }; break;                                                               // Normal
+	// (Tried and dropped: Normal looking three turns ahead. In mirror matches it did no better than two.)
+	default: lv = { 12, 14, 3600, 2, 0.0, 31, 90.0, 1, 60.0, 4, 3, 900 }; if(!g_base) { lv.deal = 63; lv.cap = 16; } break;                  // Hard
+	// (Tried for Hard and NOT shipped: three turns ahead with a second look at 4 answers. It won 17 of 24
+	// mirror duels against Normal, but it failed two boards: it would not attack a weaker monster and it
+	// Set a Raigeki with nothing to hit. The second look takes max(value, best next) and so undoes the
+	// soft common-sense penalties; and lines three turns out are valued oddly. Worth another look.)
 	}
 	// Dev: OCG_AI="worlds=4,cap=12,ms=3000,horizon=2,deal=31,bias=90,threads=1,deep=0" overrides, for tuning.
 	if(const char* env = std::getenv("OCG_AI")) {
@@ -760,7 +810,7 @@ static Level level_of(int level) {
 		lv.worlds = (int)val("worlds", lv.worlds); lv.cap = (size_t)val("cap", (double)lv.cap); lv.ms = (int)val("ms", lv.ms);
 		lv.horizon = (int)val("horizon", lv.horizon); lv.deal = (int)val("deal", lv.deal); lv.bias = val("bias", lv.bias);
 		lv.mode = (int)val("mode", lv.mode); lv.margin = val("margin", lv.margin); lv.threads = (int)val("threads", lv.threads); lv.deep = (int)val("deep", lv.deep);
-		lv.finish = (int)val("finish", lv.finish);
+		lv.finish = (int)val("finish", lv.finish); lv.noise = val("noise", lv.noise);
 	}
 	unsigned hw = std::thread::hardware_concurrency();
 	if(hw >= 2) lv.threads = std::min<int>(lv.threads, (int)hw - 1);
@@ -966,15 +1016,17 @@ static double one_try(const History& h, const Level& lv, uint64_t seed, int w, i
 // side's monster stronger (or its own weaker), stay out of a fight it wins for free, run a monster
 // into one that is known to be bigger. The same checks count these mistakes in the test matches
 // (play_match) and keep the opponent from choosing them (decide).
-enum : int { CS_SELF_HARM = 1, CS_HELP_FOE = 2, CS_LEAVE_FREE = 4, CS_SUICIDE = 8, CS_SKIP_BP = 16, CS_MISS_LETHAL = 32, CS_BAD_PICK = 64, CS_RISKY = 128, CS_MISSED_HIT = 256 };
+enum : int { CS_SELF_HARM = 1, CS_HELP_FOE = 2, CS_LEAVE_FREE = 4, CS_SUICIDE = 8, CS_SKIP_BP = 16, CS_MISS_LETHAL = 32, CS_BAD_PICK = 64, CS_RISKY = 128, CS_MISSED_HIT = 256, CS_IDLE = 512 };
+// (0.85.0) CS_IDLE: something done for nothing: a plain Spell Set with room in the hand, a Battle
+// Phase entered with nothing it could attack. Marked down, not ruled out.
 // (CS_RISKY and CS_MISSED_HIT are not ruled out, only marked down: an attack into a bigger monster
 // while it still holds a card that could turn the fight, and leaving a fight it wins in the open.)
-static const int CS_SOFT = 128 | 256;
+static const int CS_SOFT = 128 | 256 | 512;
 static const char* cs_name(int bit) {
 	switch(bit) {
 	case CS_SELF_HARM: return "self_harm"; case CS_HELP_FOE: return "help_foe"; case CS_LEAVE_FREE: return "leave_free";
 	case CS_SUICIDE: return "suicide"; case CS_SKIP_BP: return "skip_bp"; case CS_MISS_LETHAL: return "miss_lethal"; case CS_BAD_PICK: return "bad_pick";
-	case CS_RISKY: return "risky_attack"; case CS_MISSED_HIT: return "missed_hit";
+	case CS_RISKY: return "risky_attack"; case CS_MISSED_HIT: return "missed_hit"; case CS_IDLE: return "idle";
 	}
 	return "?";
 }
@@ -1061,6 +1113,35 @@ static int cs_command(Sim& s, const Board& b, const JV& m, const std::vector<uin
 					if(power >= wall) { any_ok = true; break; }
 				}
 				if(!any_ok) return (b.st_set[p] > 0 || b.hand[p] > 0) ? CS_RISKY : CS_SUICIDE;
+			}
+		}
+	}
+	if(t == 11 && !g_base) {
+		// (0.85.0) Could any of its monsters fight to some purpose right now?
+		bool could_fight = false;
+		for(auto& x : b.m[p]) {
+			if(!x.there || !(x.pos & 0x1) || x.atk <= 0) continue;
+			if(foes == 0) { could_fight = true; break; }
+			for(auto& f : b.m[op]) if(f.there && (!(f.pos & 0x5) || x.atk > ((f.pos & 0x1) ? f.atk : f.def))) { could_fight = true; break; }
+			if(could_fight) break;
+		}
+		if(v == 6 && !could_fight) return CS_IDLE;         // a Battle Phase with nothing to do in it
+		if((v & 0xffff) == 2 && m.geti("to_bp") != 0) {
+			// Turning an attacker to Defense with their field open: it gives up a free hit.
+			const JV& rp = arr(m, "repos");
+			size_t i = (size_t)(v >> 16);
+			if(i < rp.a.size()) {
+				int seq = (int)rp.a[i].geti("seq");
+				if(seq >= 0 && seq < 7 && b.m[p][seq].there && (b.m[p][seq].pos & 0x1) && b.m[p][seq].atk > 0 && foes == 0) return CS_LEAVE_FREE;
+			}
+		}
+		if((v & 0xffff) == 4 && b.hand[p] < 6) {
+			// A plain Spell Set face-down: it could have stayed in the hand.
+			const JV& ss = arr(m, "sset");
+			size_t i = (size_t)(v >> 16);
+			if(i < ss.a.size()) {
+				uint32_t ty = base_type((uint32_t)ss.a[i].geti("code"));
+				if((ty & 0x2) && !(ty & 0x10000) && !(ty & 0x80000)) return CS_IDLE;
 			}
 		}
 	}
@@ -1265,6 +1346,10 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 	// Between doing something and doing nothing that come out the same, it does something: what a
 	// search or a set-up is worth does not show on the table yet (that is the small bias above).
 
+	if(lv.noise > 0) {
+		// Easy: answers that come out about the same are taken in no fixed order.
+		for(size_t c = 0; c < N; ++c) if(count[c]) { rnd = mix(rnd); value[c] += ((rnd % 2001) / 1000.0 - 1.0) * lv.noise; }
+	}
 	// (0.76.0) Common sense: the answers no duelist gives are out, whatever the tries said.
 	std::vector<int> veto(N, 0);
 	if(!g_base) {
@@ -1273,7 +1358,7 @@ static Decision decide(const History& h, int level, int time_ms, uint64_t seed, 
 		for(size_t c = 0; c < N; ++c) if(!(veto[c] & ~CS_SOFT)) any_ok = true;
 		if(!any_ok) std::fill(veto.begin(), veto.end(), 0);
 		for(size_t c = 0; c < N; ++c) {
-			if(veto[c] && !(veto[c] & ~CS_SOFT)) { value[c] -= (veto[c] & CS_RISKY) ? 800 : 700; out.vetoed |= veto[c]; veto[c] = 0; continue; }
+			if(veto[c] && !(veto[c] & ~CS_SOFT)) { value[c] -= (veto[c] & CS_RISKY) ? 800 : ((veto[c] & CS_MISSED_HIT) ? 700 : 450); out.vetoed |= veto[c]; veto[c] = 0; continue; }
 			veto[c] &= ~CS_SOFT;
 			if(veto[c]) { value[c] = -1e18; out.vetoed |= veto[c]; }
 		}
@@ -1396,7 +1481,7 @@ static MatchResult play_match(History h, int level0, int level1, uint64_t seed, 
 			const std::string L = "L" + std::to_string(lv) + ":";
 			r.cs[L + "decisions"]++;
 			int f = cs_command(*live, b, live->ask, ans);
-			for(int bit = 1; bit <= CS_MISSED_HIT; bit <<= 1) if(f & bit) {
+			for(int bit = 1; bit <= CS_IDLE; bit <<= 1) if(f & bit) {
 				r.cs[L + cs_name(bit)]++;
 				if(r.cs_ex.size() < 40) r.cs_ex.push_back("T" + std::to_string(live->turns) + " " + L + cs_name(bit) + " ask " + std::to_string(live->ask.geti("t")) + "  " + last_notes.substr(0, 220));
 			}

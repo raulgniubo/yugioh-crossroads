@@ -1873,6 +1873,9 @@ func anim_special(p: int, inst, zone: int, method: String, materials: Array, ori
 		if method == "fusion":
 			# (the whirl hangs in the air: seen from low down)
 			cam_shot(at + Vector3(2.6 * side, 1.5, 4.6 if p == 0 else 5.4), core + Vector3(0, 0.5, 0), 0.5)
+		elif method == "synchro":
+			# (0.85.0: from the floor, looking up the column of rings the stars fly through)
+			cam_shot(at + Vector3(1.5 * side, 0.4, 3.3 if p == 0 else 4.0), at + Vector3(0, 2.3, 0), 0.5)
 		else:
 			# (rings, a galaxy, a magic circle: seen from above, at an angle, so the floor shows)
 			cam_shot(at + Vector3(2.3 * side, 4.4, 4.7 if p == 0 else 5.5), at + Vector3(0, 1.15, 0), 0.5)
@@ -2153,69 +2156,104 @@ func _flash(at: Vector3, color: Color) -> void:
 	tw.tween_callback(l.queue_free)
 
 
-var _orbs: Array[MeshInstance3D] = []
+var _orbs: Array = []          # the lights of the monsters Tributed for the Summon that is coming (FxOrb)
+var _orb_cols: Array = []     # ...and the color each one left with
 
 
-## Tributes rise, glow gold, and turn into orbs of light that wait over the field
-## until the new monster lands (see anim_summon).
+## (0.85.0) A Tribute: the card lifts in the color of its Attribute, comes apart in a burst, and
+## what is left of it is a light with a tail that climbs over the field and waits there for the
+## monster it was given for (see anim_summon and _consume_orbs).
 func anim_tribute(inst) -> void:
 	var c := card_for(inst)
 	if c == null:
 		return
-	c.set_glow(true, UITheme.GOLD)
+	var col: Color = ATTR_COLORS.get(str(inst.data.get("attribute", "")), UITheme.GOLD)
+	var lit := col.lerp(Color.WHITE, 0.35)
+	c.set_glow(true, lit)
+	var floor_at := Vector3(c.position.x, 0.03, c.position.z)
+	DuelFx.rect(self, floor_at, lit, 1.0, 1.35, 0.4, not bool(inst.attack_pos) if "attack_pos" in inst else false, 2.2)
 	var rise := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	rise.tween_property(c, "position:y", 0.9, Settings.t(0.3))
-	rise.tween_method(c.flash, 0.0, 3.0, Settings.t(0.3))
+	rise.tween_property(c, "position:y", 0.95, Settings.t(0.28))
+	rise.tween_property(c, "rotation:y", c.rotation.y + 0.5, Settings.t(0.28))
+	rise.tween_method(c.flash, 0.0, 3.2, Settings.t(0.28))
 	await rise.finished
-	var orb := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.16
-	sm.height = 0.32
-	orb.mesh = sm
-	var om := StandardMaterial3D.new()
-	om.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	om.albedo_color = Color("ffe28a")
-	om.emission_enabled = true
-	om.emission = UITheme.GOLD
-	om.emission_energy_multiplier = 6.0
-	orb.material_override = om
-	orb.position = c.position
-	add_child(orb)
+	# It comes apart: a burst, a ring on the floor under it, motes going up.
+	var at := c.position
+	DuelFx.glow(self, at, lit, 1.9, 0.38, 0.8, 3.0)
+	DuelFx.rays(self, at, lit, 1.3, 0.32, 16, false)
+	DuelFx.ring(self, floor_at, lit, 0.3, 1.5, 0.45, 0.05)
+	DuelFx.embers(self, floor_at, lit, 0.5, 18, 0.8, 2.2, 0.05)
+	var orb := DuelFx.orb(self, at, lit, 0.44)
 	_orbs.append(orb)
+	_orb_cols.append(lit)
 	var fade := create_tween().set_parallel()
-	fade.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.2))
-	fade.tween_property(c, "scale", Vector3(0.3, 0.3, 0.3), Settings.t(0.2))
-	var gather := Vector3(0, 1.8, 1.0) + Vector3((_orbs.size() - 1.5) * 0.5, 0, 0)
-	fade.tween_property(orb, "position", gather, Settings.t(0.35)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	fade.tween_method(c.set_alpha, 1.0, 0.0, Settings.t(0.16))
+	fade.tween_property(c, "scale", Vector3(0.3, 0.3, 0.3), Settings.t(0.16))
+	# It climbs in a curve to its place in the row of lights over the field.
+	var gather := Vector3((_orbs.size() - 1) * 0.62 - 0.62, 2.1, 0.6)
+	var mid := (at + gather) * 0.5 + Vector3(0, 0.9, 0)
+	fade.tween_method(func(t: float):
+		if is_instance_valid(orb):
+			orb.position = at.lerp(mid, t).lerp(mid.lerp(gather, t), t), 0.0, 1.0, Settings.t(0.36)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await fade.finished
 	_cards.erase(inst.uid)
 	c.queue_free()
 	_add_to_gy(inst)
 
 
-## Tribute lights that no Summon came to collect (a Tribute paid as a cost) fade out.
+## Tribute lights that no Summon came to collect (a Tribute paid as a cost) go out.
 func clear_orbs() -> void:
 	for o in _orbs:
 		if is_instance_valid(o):
-			var tw := create_tween()
-			tw.tween_property(o, "scale", Vector3(0.01, 0.01, 0.01), Settings.t(0.25))
-			tw.tween_callback(o.queue_free)
+			(o as FxOrb).pop(0.5)
 	_orbs.clear()
+	_orb_cols.clear()
 
 
+## The lights come down round the zone in a spiral and go into it. The more monsters were given,
+## the more it is: one is a quiet shaft of light, two shake the table, three (a God) light the hall.
 func _consume_orbs(at: Vector3) -> void:
 	if _orbs.is_empty():
 		return
-	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	for orb in _orbs:
-		tw.tween_property(orb, "position", at + Vector3(0, 0.3, 0), Settings.t(0.3))
-		tw.tween_property(orb, "scale", Vector3(0.4, 0.4, 0.4), Settings.t(0.3))
+	var n := _orbs.size()
+	var k := clampf(float(n), 1.0, 3.0)
+	var main: Color = _orb_cols[0] if not _orb_cols.is_empty() else UITheme.GOLD
+	var floor_at := Vector3(at.x, 0.03, at.z)
+	DuelFx.glyph(self, floor_at, main, 0.8 + 0.2 * k, 0.85, {"rings": int(k), "ticks": 24, "star": 0, "turn": 2.4})
+	var tw := create_tween().set_parallel()
+	for i in n:
+		var orb = _orbs[i]
+		if not is_instance_valid(orb):
+			continue
+		var from: Vector3 = orb.position
+		var a0 := atan2(from.z - at.z, from.x - at.x)
+		var r0 := maxf(1.0, Vector2(from.x - at.x, from.z - at.z).length())
+		tw.tween_method(func(t: float):
+			if not is_instance_valid(orb):
+				return
+			var ang := a0 + t * TAU * 1.25 + float(i) * TAU / float(n) * t
+			var rad := r0 * pow(1.0 - t, 0.75)
+			orb.position = Vector3(at.x + cos(ang) * rad, lerpf(from.y, at.y + 0.3, t * t), at.z + sin(ang) * rad), 0.0, 1.0, Settings.t(0.42 + 0.05 * i)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await tw.finished
-	for orb in _orbs:
-		orb.queue_free()
+	for i in n:
+		var orb2 = _orbs[i]
+		if is_instance_valid(orb2):
+			(orb2 as FxOrb).pop(0.5 + 0.15 * k)
 	_orbs.clear()
-	_flash(at + Vector3(0, 0.5, 0), UITheme.GOLD)
-	_ring_fx(at + Vector3(0, 0.1, 0), UITheme.GOLD, 1.0, 0.0, 1.2)
+	_flash(at + Vector3(0, 0.5, 0), main)
+	DuelFx.pillar(self, floor_at, main, 0.42 + 0.16 * k, 3.5 + 1.6 * k, 0.6 + 0.12 * k, 0.0, 2.0 + 0.3 * k)
+	DuelFx.ring(self, floor_at, main, 0.3, 1.2 + 0.5 * k, 0.5, 0.045, 0.0, 1.9)
+	for i in mini(_orb_cols.size(), 3):
+		_ring_fx(at + Vector3(0, 0.1, 0), _orb_cols[i], 1.0 + 0.35 * i, 0.06 * i, 1.2)
+	if n >= 2:
+		DuelFx.rays(self, floor_at, main, 1.8 + 0.6 * k, 0.4, 22)
+		shake(0.25 * k)
+	if n >= 3:
+		DuelFx.pillar(self, floor_at, Color.WHITE, 0.3, 9.0, 0.7, 0.05, 3.0)
+		DuelFx.ring(self, floor_at, main.lightened(0.3), 0.4, 3.2, 0.7, 0.045, 0.08, 1.8)
+		house(0.5, main, at, 1.0)
+		Pad.rumble(0.4, 0.6, 0.4)
+	_orb_cols.clear()
 
 
 ## Battle Phase: the field tints and the camera leans in.
@@ -2617,19 +2655,26 @@ func anim_battle(p: int, inst, target) -> void:
 	# arrives as the blow lands, leaning into the side the hit comes from.
 	_battle_follow(p, home.origin, goal, target == null, tier if show else 0)
 	# (0.60.0) Beat 2: its element crosses the field with it.
-	if show:
+	# (0.85.0) A main monster's named attack is its own (SigFx); the rest throw their element.
+	var named := show and SigFx.has(inst)
+	if named:
+		SigFx.travel(self, inst, home.origin, goal, BATTLE_DASH[tier])
+	elif show:
 		ElementFx.travel(self, inst, home.origin, goal, tier, BATTLE_DASH[tier])
 	var echoes := EchoFx.is_echo(int(inst.id))
 	if echoes:
 		EchoFx.trail(self, c, BATTLE_DASH[tier] + 0.06)
 	await _dash(c, hit, BATTLE_DASH[tier])
-	StrikeFx.play(self, inst, home.origin, goal)
+	if named:
+		SigFx.impact(self, inst, home.origin, goal)
+	else:
+		StrikeFx.play(self, inst, home.origin, goal)
 	if echoes:
 		# (her echoes land the same blow a moment after her)
 		EchoFx.strikes(self, int(inst.id), Transform3D(home.basis, home.origin + Vector3(0, 0.6, 0)), goal, 2)
 	# Beat 3: it lands.
 	_impact(goal + Vector3(0, 0.15, 0), ATTR_COLORS.get(ElementFx.attr_of(inst), Color("ff8a5c")))
-	if show:
+	if show and not named:
 		ElementFx.impact(self, inst, home.origin, goal, tier)
 	var lean := 0.035 if goal.x >= home.origin.x else -0.035
 	var th := holo_for(target)
@@ -2705,13 +2750,20 @@ func anim_finisher(p: int, inst, target) -> void:
 	var hit := Transform3D(home.basis, home.origin.lerp(goal, 0.9) + Vector3(0, 0.3, 0))
 	create_tween().tween_property(orb, "position", hit.origin, Settings.t(0.2)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	Sfx.play("attack", 0.0, 0.7)
-	ElementFx.travel(self, inst, home.origin, floor_at, 2, 0.2)
+	var named_end := SigFx.has(inst)
+	if named_end:
+		SigFx.travel(self, inst, home.origin, goal, 0.2)
+	else:
+		ElementFx.travel(self, inst, home.origin, floor_at, 2, 0.2)
 	await _dash(c, hit, 0.2)
 	if is_instance_valid(orb):
 		orb.pop(1.6)
 	# The hit.
-	StrikeFx.play(self, inst, home.origin, goal)
-	ElementFx.impact(self, inst, home.origin, floor_at, 2)
+	if named_end:
+		SigFx.impact(self, inst, home.origin, goal)
+	else:
+		StrikeFx.play(self, inst, home.origin, goal)
+		ElementFx.impact(self, inst, home.origin, floor_at, 2)
 	finisher_hit.emit(goal, col)
 	if echo_end:
 		EchoFx.strikes(self, int(inst.id), back, goal, 3)
@@ -2988,8 +3040,13 @@ func anim_attack(p: int, inst, target) -> void:
 	if EchoFx.is_echo(int(inst.id)):
 		EchoFx.trail(self, c, 0.2)
 		EchoFx.strikes(self, int(inst.id), lift, goal, 2)
-	await _move(c, hit, 0.16, 0.15)
-	StrikeFx.play(self, inst, home.origin, goal)
+	if SigFx.has(inst):
+		SigFx.travel(self, inst, home.origin, goal, 0.16)
+		await _move(c, hit, 0.16, 0.15)
+		SigFx.impact(self, inst, home.origin, goal)
+	else:
+		await _move(c, hit, 0.16, 0.15)
+		StrikeFx.play(self, inst, home.origin, goal)
 	_attr_hit(inst, home.origin, goal + Vector3(0, 0.15, 0))
 	var th := holo_for(target)
 	if th:

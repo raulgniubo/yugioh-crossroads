@@ -70,7 +70,7 @@ func boards() -> Array:
 		b("Tempo: direct attack instead of a pointless trade", {"m": [["Vorse Raider", 1]], "hand": ["Fissure"]}, {"lp": 1900, "m": [["Gemini Elf", 1]]}, win),
 		# (0.76.0) What Raul and his brother saw it do, and what no level may do.
 		b("Sense: Typhoon is not used on its own Set card", {"m": [["Vorse Raider", 1]], "hand": ["Mystical Space Typhoon"], "st": ["Mirror Force"]}, {"m": [["Gemini Elf", 1]]},
-			func(r): return int(r["st"][0]) == 1),
+			func(r): return int(r["st"][0]) + int(r["hand"][0]) == 2),      # (0.85.0: it may Set the Typhoon, a Quick-Play; its own card must still be there)
 		b("Sense: Typhoon hits their card, not its own", {"hand": ["Mystical Space Typhoon"], "st": ["Mirror Force"]}, {"st": ["Mirror Force"]},
 			func(r): return int(r["st"][0]) == 1),
 		b("Sense: an Equip goes on its own monster", {"m": [["Battle Ox", 1]], "hand": ["Axe of Despair"]}, {"m": [["Vorse Raider", 1]]},
@@ -95,6 +95,39 @@ func boards() -> Array:
 			func(r): return int(r["lp"][0]) == 8000),
 		b("Sense: Shrink on theirs, then the attack", {"m": [["Summoned Skull", 1]], "hand": ["Shrink"]}, {"m": [["Blue-Eyes White Dragon", 1]]},
 			func(r): return (r["mons"][1] as Array).size() == 0 and (r["mons"][0] as Array).size() == 1),
+		# (0.85.0) The floor: what no level does, Easy included (Raul: "no significa que haga estupideces").
+		b("Floor: a weak monster does not go down in Attack under a bigger one", {"hand": ["Celtic Guardian"]}, {"m": [["Summoned Skull", 1]]},
+			func(r):
+				for c in r["mons"][0]:
+					if int(c["pos"]) & 0x1:
+						return false
+				return int(r["lp"][0]) == 8000),
+		b("Floor: the weak one turns to Defense before their turn", {"m": [["Battle Ox", 1]]}, {"m": [["Summoned Skull", 1]]},
+			func(r): return int(r["lp"][0]) >= 8000, 2),
+		b("Floor: a free direct attack is taken, however small", {"m": [["Kuriboh", 1]]}, {},
+			func(r): return int(r["lp"][1]) == 7700),
+		b("Floor: Monster Reborn takes the stronger of its own two", {"hand": ["Monster Reborn"], "gy": ["Kuriboh", "Summoned Skull"]}, {},
+			func(r):
+				for c in r["mons"][0]:
+					if int(c["atk"]) >= 2500:
+						return true
+				return false),
+		b("Floor: Tribute for the monster that wins the fight", {"m": [["Kuriboh", 1]], "hand": ["Summoned Skull"]}, {"m": [["Vorse Raider", 1]]},
+			func(r): return (r["mons"][1] as Array).size() == 0),
+		b("Floor: a monster is Set as a wall rather than leaving the field open", {"hand": ["Kuriboh"]}, {"m": [["Vorse Raider", 1]]},
+			func(r): return int(r["lp"][0]) == 8000, 2),
+		b("Floor: no Dark Hole when only its own monster would go", {"m": [["Blue-Eyes White Dragon", 1]], "hand": ["Dark Hole"]}, {},
+			func(r): return (r["mons"][0] as Array).size() == 1 and int(r["lp"][1]) == 5000),
+		b("Floor: a Trap is Set, not held", {"hand": ["Mirror Force"]}, {"m": [["Vorse Raider", 1]]},
+			func(r): return int(r["st"][0]) == 1),
+		b("Floor: on low Life Points it blocks instead of standing in Attack", {"lp": 700, "m": [["Battle Ox", 1]]}, {"m": [["Blue-Eyes White Dragon", 1]]},
+			func(r): return int(r["winner"]) != 1, 2),
+		b("Floor: the big one attacks and the small one stays out of a fight it loses", {"m": [["Summoned Skull", 1], ["Kuriboh", 1]]}, {"m": [["Vorse Raider", 1], ["Gemini Elf", 1]]},
+			func(r): return int(r["lp"][0]) == 8000 and (r["mons"][1] as Array).size() == 1),
+		b("Floor: Fissure is used on their only monster to get through", {"m": [["Battle Ox", 1]], "hand": ["Fissure"]}, {"lp": 1700, "m": [["Summoned Skull", 1]]},
+			func(r): return int(r["winner"]) == 0),
+		b("Floor: two weak monsters do not both stay in Attack under a giant", {"m": [["Battle Ox", 1], ["Celtic Guardian", 1]]}, {"m": [["Blue-Eyes White Dragon", 1]]},
+			func(r): return int(r["lp"][0]) >= 8000, 2),
 	]
 
 
@@ -178,10 +211,17 @@ func _ready() -> void:
 			last = play(board, level, 11 + s * 5)
 			if not last.is_empty() and (board["want"] as Callable).call(last):
 				ok += 1
+			elif OS.has_environment("BOARD_LOG"):
+				print("  run ", s, " failed:")
+				for l in last.get("logs", []):
+					print("    ", l)
 		var good := ok * 2 > runs
 		if good:
 			passed += 1
 		print("%s  %d/%d  %s%s" % ["PASS" if good else "FAIL", ok, runs, board["name"],
 			"" if good else "   -> LP %s, monsters %d vs %d, hand %s, winner %s" % [str(last.get("lp")), (last.get("mons", [[], []])[0] as Array).size(), (last.get("mons", [[], []])[1] as Array).size(), str(last.get("hand")), str(last.get("winner"))]])
+		if OS.has_environment("BOARD_LOG") and not good:
+			for l in last.get("logs", []):
+				print("    ", l)
 	print("BOARDS level %d: %d of %d passed  (%d ms)" % [level, passed, list.size(), Time.get_ticks_msec() - t0])
 	get_tree().quit(0)
