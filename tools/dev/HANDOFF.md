@@ -1917,3 +1917,9 @@ mirror force, cartas como esas y otras les podemos hacer animaciones buenas".
 - A ShaderMaterial uniform must be SET before a tween can find "shader_parameter/x" (Mirror Force taught this).
 - FxDemo: `st_card` with FX_CARD="A|B|C" (a reel, 2.1 s each); /tmp/stbatch.sh "tag|Card|Card". Under llvmpipe
   game time runs far behind real time: FX_SCALE=0.2 for one card, 0.5 and TMO=1100 for a reel.
+- Filmed (0.84.0): entrances of Neo Blue-Eyes Ultimate (wings, boss), Odin (runes, boss), Ruddy Rose (bloom);
+  Magic Cylinder, Mirror Force, Torrential Tribute (before the water was made bluer), Solemn Judgment, Bottomless,
+  Ring of Destruction, Spellbinding Circle, Change of Heart (before it was strengthened), Book of Moon, Dimensional
+  Prison, Burst Stream, Dark Magic Attack, Thousand Knives, Dian Keto. NOT seen: Compulsory Evacuation and
+  Hinotama (the reel's frames fell between them; no script errors), slash / storm / photon figures, the other 84
+  entrances, any of it inside a real duel (the films use the demo, with placeholder card art), Windows and Mac.
