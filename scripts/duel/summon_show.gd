@@ -410,8 +410,9 @@ func _build(card: Dictionary, nm: String, line: String, mine: bool) -> void:
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.modulate.a = 0.0
 	add_child(sub)
-	Sfx.play("special", -3.0, 0.8 if mine else 0.65)
-	Sfx.play("charge", -8.0)
+	if not Sfx.play_own("boss_enter" if _boss else "ace_enter", 0.0):      # (0.87.0: its own sound, else the tones)
+		Sfx.play("special", -3.0, 0.8 if mine else 0.65)
+		Sfx.play("charge", -8.0)
 	# It comes up out of the depth of the screen, turning straight as it does, lands white hot, and
 	# then keeps drifting a hair closer for as long as it is up (it never just sits there).
 	var tw := create_tween().set_parallel()

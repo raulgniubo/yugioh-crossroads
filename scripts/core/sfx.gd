@@ -94,18 +94,42 @@ static func load_audio(path: String) -> AudioStream:
 static func own_file(folder: String, name: String) -> AudioStream:
 	var card_folder := str(Engine.get_main_loop().root.get_node("Settings").card_folder) if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("Settings") else ""
 	if card_folder == "":
-		return null
+		return bundled(folder, name)
 	for ext in ["ogg", "wav", "mp3"]:
 		var s := load_audio(card_folder.path_join(folder).path_join(name + "." + ext))
 		if s != null:
 			return s
-	return null
+	return bundled(folder, name)
 
 
 func _own_sound(name: String) -> AudioStream:
 	if not _own.has(name):
 		_own[name] = own_file("sounds", name)
 	return _own[name]
+
+
+## (0.87.0) The sounds that come with the game: res://audio/<folder>/<name>.ogg (made with ElevenLabs,
+## see tools/dev/sound/). A file of yours in the card folder still wins; with neither, the tone
+## made by code plays as before, so a missing file never leaves a hole.
+static func bundled(folder: String, name: String) -> AudioStream:
+	var path := "res://audio/%s/%s.ogg" % [folder, name]
+	if ResourceLoader.exists(path):
+		return load(path) as AudioStream
+	return null
+
+
+## Is there a real sound (yours or the game's) by this name?
+func has_own(name: String) -> bool:
+	return _own_sound(name) != null
+
+
+## Plays `name` only if there is a real sound for it. Returns whether it did: the caller then
+## skips the tones it would have used instead.
+func play_own(name: String, volume_db := 0.0, pitch := 1.0) -> bool:
+	if _own_sound(name) == null:
+		return false
+	play(name, volume_db, pitch)
+	return true
 
 
 ## Forget your own sounds (the card folder changed): they are looked for again.

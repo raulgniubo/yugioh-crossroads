@@ -100,6 +100,17 @@ static func _look(inst) -> Array:
 	return out
 
 
+## (0.87.0) Each shape has a sound of its own (res://audio/sounds/sig_<shape>.ogg). While it plays,
+## the tones this file used to make for the same attack stay silent.
+static var _own_until := 0
+
+
+static func _snd(name: String, volume_db := 0.0, pitch := 1.0) -> void:
+	if Time.get_ticks_msec() < _own_until:
+		return
+	Sfx.play(name, volume_db, pitch)
+
+
 static func has(inst) -> bool:
 	return not _look(inst).is_empty()
 
@@ -125,6 +136,8 @@ static func travel(board: Node3D, inst, from: Vector3, to: Vector3, dur: float) 
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3(0, 0, -1)
 	var side := dir.cross(Vector3.UP).normalized()
 	var tree := board.get_tree()
+	if Sfx.play_own("sig_" + str(lk[0]), 0.0):
+		_own_until = Time.get_ticks_msec() + 1100
 	board.shade(0.6 + dur, 0.5)
 	match str(lk[0]):
 		"stream", "multi":
@@ -141,21 +154,21 @@ static func travel(board: Node3D, inst, from: Vector3, to: Vector3, dur: float) 
 						if str(lk[0]) != "multi":      # (each of the many keeps its own color: no white core over it)
 							StrikeFx._beam(board, start, hit, a, 0.12 * size / sqrt(float(n)) + 0.03))
 			DuelFx.sparks(board, mouth, a, 18, 5.0, 0.4, 0.5, -3.0, 0.05)
-			Sfx.play("charge", -5.0, 1.5)
+			_snd("charge", -5.0, 1.5)
 		"orb":
 			var o := DuelFx.orb(board, mouth + Vector3(0, 0.5, 0), a, 0.8 * size)
 			DuelFx.glyph(board, Vector3(from.x, 0.03, from.z), b.lightened(0.3), 1.0 * size, 0.7, {"star": 5, "rings": 1, "turn": 3.0})
 			var tw := board.create_tween()
 			tw.tween_property(o, "position", hit, Settings.t(maxf(0.1, dur))).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 			tw.tween_callback(o.pop.bind(1.8 * size))
-			Sfx.play("whoosh", -4.0, 0.8)
+			_snd("whoosh", -4.0, 0.8)
 		"thunder":
 			for i in 3:
 				var bend := hit.lerp(mouth, 0.5) + side * (0.5 if i % 2 == 0 else -0.5) + Vector3(0, 0.3 * i, 0)
 				StrikeFx._beam(board, mouth, bend, a, 0.07 * size)
 				StrikeFx._beam(board, bend, hit, a, 0.07 * size)
 			DuelFx.glow(board, mouth, a, 1.4 * size, 0.3, 0.8, 3.0)
-			Sfx.play("impact", -6.0, 1.9)
+			_snd("impact", -6.0, 1.9)
 		"fist":
 			var block := MeshInstance3D.new()
 			var bm := BoxMesh.new()
@@ -178,7 +191,7 @@ static func travel(board: Node3D, inst, from: Vector3, to: Vector3, dur: float) 
 			fw.parallel().tween_property(core.material_override, "albedo_color:a", 0.0, Settings.t(0.16))
 			fw.tween_callback(block.queue_free)
 			DuelFx.pillar(board, Vector3(to.x, 0.03, to.z), a, 0.5 * size, 6.0, 0.4, 0.0, 1.4)
-			Sfx.play("whoosh", -3.0, 0.6)
+			_snd("whoosh", -3.0, 0.6)
 		"dive":
 			var top := from.lerp(to, 0.45) + Vector3(0, 5.0, 0)
 			var d := DuelFx.orb(board, top, a, 0.9 * size)
@@ -186,14 +199,14 @@ static func travel(board: Node3D, inst, from: Vector3, to: Vector3, dur: float) 
 			dw.tween_property(d, "position", hit, Settings.t(maxf(0.12, dur))).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 			dw.tween_callback(d.pop.bind(2.0 * size))
 			DuelFx.glow(board, top, b, 1.5 * size, 0.3, 0.8, 3.0)
-			Sfx.play("whoosh", -3.0, 1.2)
+			_snd("whoosh", -3.0, 1.2)
 		"sonic":
 			for i in n:
 				var t := float(i) / float(maxi(1, n - 1))
 				_hoop(board, mouth.lerp(hit, 0.12 + 0.8 * t), dir, a if i % 2 == 0 else b, 0.25 * size, (0.5 + 0.75 * t) * size, 0.32, maxf(0.02, dur) * t * 0.9)
 			StrikeFx._beam(board, mouth, hit, a, 0.08 * size)
 			DuelFx.sparks(board, mouth, a, 26, 6.0, 0.3, 0.6, -2.0, 0.04)
-			Sfx.play("whoosh", -3.0, 1.7)
+			_snd("whoosh", -3.0, 1.7)
 		"petals":
 			ElementFx.twister(board, Vector3(to.x, 0.03, to.z), a, b, 0.25 * size, 1.0 * size, 2.6, 0.6, 0.0, 1.6)
 			for i in 3:
@@ -202,17 +215,17 @@ static func travel(board: Node3D, inst, from: Vector3, to: Vector3, dur: float) 
 				pw.tween_interval(Settings.t(0.03 * i))
 				pw.tween_property(o2, "position", hit + side * (1 - i) * 0.3, Settings.t(maxf(0.1, dur))).set_trans(Tween.TRANS_SINE)
 				pw.tween_callback(o2.pop.bind(0.9))
-			Sfx.play("whoosh", -4.0, 1.3)
+			_snd("whoosh", -4.0, 1.3)
 		"slash":
 			if n >= 2:
 				# (the sun at its back, or the light of its blade)
 				DuelFx.glow(board, from + Vector3(0, 1.6, 0) - dir * 0.6, a, 2.6 * size, 0.5, 0.6, 2.6)
 				DuelFx.rays(board, from + Vector3(0, 1.6, 0) - dir * 0.6, a, 2.0 * size, 0.4, 20, false, 2.2)
-			Sfx.play("whoosh", -4.0, 1.5)
+			_snd("whoosh", -4.0, 1.5)
 		"jaws":
 			StrikeFx._beam(board, mouth, hit, b, 0.12 * size)
 			DuelFx.ring(board, Vector3(to.x, 0.03, to.z), a, 1.6 * size, 0.4, 0.3, 0.06)
-			Sfx.play("whoosh", -4.0, 0.7)
+			_snd("whoosh", -4.0, 0.7)
 	return true
 
 
@@ -286,7 +299,7 @@ static func impact(board: Node3D, inst, from: Vector3, to: Vector3) -> bool:
 			DuelFx.sparks(board, hit, a, 44, 6.0, 1.0, 0.8, -12.0, 0.05)
 			DuelFx.ring(board, floor_at, a, 0.3, 2.3 * size, 0.55, 0.05, 0.08, 1.8)
 	board.shake(0.5 + 0.35 * size)
-	Sfx.play("impact", -2.0, 1.1 - 0.15 * size)
+	_snd("impact", -2.0, 1.1 - 0.15 * size)
 	return true
 
 

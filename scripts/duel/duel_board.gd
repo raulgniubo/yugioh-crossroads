@@ -1546,6 +1546,7 @@ func ace_lands(p: int, zone: int, a: Color, b: Color, boss := false) -> void:
 ## comes off it slowly, hangs for a beat in a burst of light, and only then goes to the hand.
 ## About a second and a half, once a duel for each duelist (the duel screen decides when).
 func anim_draw_fate(p: int, inst, deck_count: int) -> void:
+	Sfx.play_own("fate_draw", 0.0)
 	var c := _new_card(inst)
 	c.set_pickable(false)
 	var dp := deck_pos(p)
@@ -2853,6 +2854,7 @@ func hit_stop(sec: float) -> void:
 
 
 func anim_attack_stopped(inst) -> void:
+	Sfx.play_own("attack_stopped", 0.0)
 	var c := card_for(inst)
 	if c == null:
 		return
@@ -3258,6 +3260,8 @@ func anim_destroy(inst, overlays: Array = [], how := {}) -> void:
 	if kind == "battle" and dir != Vector3.ZERO:
 		_slash(home + Vector3(0, 0.32, 0), dir, red.lightened(0.5))
 	var tw2 := create_tween().set_parallel()
+	if style in ["burn", "splash", "blow", "crumble", "rise", "sink"]:
+		Sfx.play_own("gone_" + style, -2.0)      # (0.87.0: each way of going has its sound)
 	match style:
 		"burn":
 			# (No ring, no white flash: fire is embers climbing out of the card while it darkens and goes.)

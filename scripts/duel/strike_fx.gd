@@ -125,11 +125,11 @@ static func play(board: Node3D, inst, from: Vector3, at: Vector3) -> void:
 			_slash(board, hit, col.lightened(0.4), 0.7)
 			if inst != null and int(inst.data.get("level", 4)) >= 7:
 				_slash(board, hit, col.lightened(0.2), -0.7, 0.0, 0.1)
-			Sfx.play("whoosh", -6.0, 1.7)
+			_snd("whoosh", -6.0, 1.7)
 		"claw":
 			for k in 3:
 				_slash(board, hit, col.lightened(0.3), 0.95, -0.22 + k * 0.22, k * 0.03, 3.0)
-			Sfx.play("whoosh", -6.0, 2.0)
+			_snd("whoosh", -6.0, 2.0)
 		"bite":
 			# Two rows of teeth snap shut on the target.
 			var m := _add_mat(Color(1.0, 0.98, 0.9), 0.95)
@@ -151,18 +151,18 @@ static func play(board: Node3D, inst, from: Vector3, at: Vector3) -> void:
 				tw.tween_interval(Settings.t(0.12))
 				tw.tween_property(jaw, "scale", Vector3(1.3, 0.01, 1.0), Settings.t(0.12))
 				tw.tween_callback(jaw.queue_free)
-			Sfx.play("impact", -7.0, 1.6)
+			_snd("impact", -7.0, 1.6)
 		"beam":
 			_beam(board, from + Vector3(0, 0.9, 0), hit, col)
 			board._ring_fx(at + Vector3(0, 0.1, 0), col, 0.8, 0.05, 1.2)
-			Sfx.play("charge", -8.0, 1.6)
+			_snd("charge", -8.0, 1.6)
 		"blast":
 			# A circle of light under the target, then it goes up.
 			for k in 3:
 				board._ring_fx(at + Vector3(0, 0.06, 0), col.lerp(Color.WHITE, k * 0.3), 0.5 + k * 0.35, k * 0.05, 0.2 + k * 0.9)
 			board._flash(hit, col)
 			_beam(board, at + Vector3(0, 3.2, 0), at + Vector3(0, 0.1, 0), col.lightened(0.3), 0.16)
-			Sfx.play("sparkle", -6.0, 0.8)
+			_snd("sparkle", -6.0, 0.8)
 		"smash":
 			var wedge := MeshInstance3D.new()
 			var pm := PrismMesh.new()
@@ -179,7 +179,7 @@ static func play(board: Node3D, inst, from: Vector3, at: Vector3) -> void:
 				board._ring_fx(at + Vector3(0, 0.05, 0), col, 1.3, 0.0, 0.3))
 			tw2.tween_property(wedge, "scale", Vector3(1.6, 0.05, 1.6), Settings.t(0.16))
 			tw2.tween_callback(wedge.queue_free)
-			Sfx.play("impact", -5.0, 0.55)
+			_snd("impact", -5.0, 0.55)
 
 
 ## The look of a famous Spell or Trap. `p` is who played it. Returns false if the card has none.
@@ -191,6 +191,8 @@ static func card(board: Node3D, card_name: String, p: int, ctx := {}) -> bool:
 	var mine: Vector3 = board.monster_zone_pos(p, 2)
 	var theirs: Vector3 = board.monster_zone_pos(o, 2)
 	var attacker: Vector3 = ctx.get("attacker", Vector3.INF)
+	if not aims(card_name):
+		_own_sound(card_name)      # (a card that aims plays it when it reaches its target: card_on)
 	if n.contains("magic cylinder"):
 		_magic_cylinder(board, p, attacker if attacker != Vector3.INF else theirs)
 		return true
@@ -296,7 +298,7 @@ static func card(board: Node3D, card_name: String, p: int, ctx := {}) -> bool:
 				_bolt(board, at)
 				board._flash(at + Vector3(0, 0.5, 0), Color("fff6a0")))
 		board.shake(1.0)
-		Sfx.play("impact", -3.0, 1.5)
+		_snd("impact", -3.0, 1.5)
 	elif n == "dark hole" or n.contains("black hole"):
 		board._vortex(Vector3(0, 0.7, 0), Color("7a3cff"))
 		board._rift(Vector3(0, 0, 0))
@@ -314,18 +316,18 @@ static func card(board: Node3D, card_name: String, p: int, ctx := {}) -> bool:
 		_beam(board, mine + Vector3(0, 5.0, 0), mine + Vector3(0, 0.05, 0), Color("ffd866"), 0.5)
 		for k in 4:
 			board._ring_fx(mine + Vector3(0, 0.05, 0), Color("ffd866"), 0.6 + k * 0.2, k * 0.08, 2.4)
-		Sfx.play("sparkle", -3.0, 0.7)
+		_snd("sparkle", -3.0, 0.7)
 	elif n.contains("pot of greed") or n.contains("graceful charity") or n.contains("card destruction"):
 		var dp: Vector3 = board.deck_pos(p)
 		for k in 3:
 			board._ring_fx(dp + Vector3(0, 0.3, 0), Color("6dff9a"), 0.5 + k * 0.2, k * 0.07, 1.6)
 		board._flash(dp + Vector3(0, 0.8, 0), Color("6dff9a"))
-		Sfx.play("coin", -6.0, 0.8)
+		_snd("coin", -6.0, 0.8)
 	elif n.contains("typhoon") or n.contains("twister"):
 		var wide: bool = not n.contains("typhoon") and not n.contains("twister")
 		for z in (5 if wide else 1):
 			board._swirl(board.st_pos(o, z if wide else 2) + Vector3(0, 0.6, 0), Color("9fffd0"))
-		Sfx.play("whoosh", -2.0, 0.9)
+		_snd("whoosh", -2.0, 0.9)
 	elif n.contains("swords of revealing light"):
 		for k in 9:
 			var sx := -3.6 + k * 0.9
@@ -343,12 +345,12 @@ static func card(board: Node3D, card_name: String, p: int, ctx := {}) -> bool:
 			tw.tween_interval(Settings.t(0.7))
 			tw.tween_property(sword.material_override, "albedo_color:a", 0.0, Settings.t(0.3))
 			tw.tween_callback(sword.queue_free)
-		Sfx.play("sparkle", -3.0)
+		_snd("sparkle", -3.0)
 	elif n == "fissure" or n.contains("hammer shot") or n.contains("smashing ground") or n.contains("trap hole"):
 		board._rift(theirs)
 		board._ring_fx(theirs + Vector3(0, 0.04, 0), Color("ffb060"), 1.4, 0.0, 0.2)
 		board.shake(0.9)
-		Sfx.play("impact", -3.0, 0.6)
+		_snd("impact", -3.0, 0.6)
 	elif n.contains("polymerization") or n.contains("fusion"):
 		board._swirl(mine + Vector3(0, 0.8, 0), Color("b06cff"))
 		board._swirl(mine + Vector3(0, 0.8, 0), Color("ff9a3c"))
@@ -402,10 +404,45 @@ static func _barrier(board: Node3D, at: Vector3, col: Color) -> void:
 	tw.tween_callback(mi.queue_free)
 	for k in 6:
 		board._ring_fx(at + Vector3(-3.6 + k * 1.44, 0.05, 0), col, 0.4, k * 0.02, 1.8)
-	Sfx.play("trap", -6.0, 1.2)
+	_snd("trap", -6.0, 1.2)
 
 
 # ------------------------------------------------------------------ the famous ones, as set pieces (0.84.0)
+
+## (0.87.0) The famous cards have a sound of their own (res://audio/sounds/st_<key>.ogg): the first
+## word list that matches the card's name gives the key. While it plays, this file's tones stay silent.
+const CARD_SOUNDS := [["mirror force", "mirror_force"], ["magic cylinder", "magic_cylinder"], ["sakuretsu", "sakuretsu"], ["negate attack", "negate_attack"],
+	["swift scarecrow", "scarecrow"], ["kuriboh", "kuriboh"], ["battle fader", "fader"], ["honest", "honest"], ["raigeki break", "typhoon"], ["raigeki", "raigeki"],
+	["lightning vortex", "raigeki"], ["dark hole", "dark_hole"], ["torrential tribute", "torrential"], ["heavy storm", "heavy_storm"], ["giant trunade", "heavy_storm"],
+	["feather duster", "feather_duster"], ["virus", "virus"], ["ring of destruction", "ring_destruction"], ["spellbinding circle", "chains"], ["shadow spell", "chains"],
+	["fiendish chain", "chains"], ["change of heart", "change_heart"], ["brain control", "change_heart"], ["mind control", "change_heart"], ["snatch steal", "change_heart"],
+	["enemy controller", "change_heart"], ["book of moon", "book_moon"], ["compulsory evacuation", "compulsory"], ["dimensional prison", "dim_prison"],
+	["bottomless trap hole", "bottomless"], ["thousand knives", "knives"], ["shrink", "shrink"], ["effect veiler", "veiler"], ["mystical space typhoon", "typhoon"],
+	["twister", "typhoon"], ["dust tornado", "typhoon"], ["solemn judgment", "solemn"], ["solemn warning", "solemn"], ["solemn strike", "solemn"],
+	["super polymerization", "super_poly"], ["de-fusion", "defusion"], ["power bond", "power_bond"], ["limiter removal", "limiter"], ["skill drain", "skill_drain"],
+	["royal decree", "decree"], ["imperial order", "decree"]]
+static var _own_until := 0
+
+
+static func sound_key(card_name: String) -> String:
+	var n := card_name.to_lower()
+	for pair in CARD_SOUNDS:
+		if n.contains(str(pair[0])):
+			return str(pair[1])
+	return ""
+
+
+static func _own_sound(card_name: String) -> void:
+	var key := sound_key(card_name)
+	if key != "" and Sfx.play_own("st_" + key, 0.0):
+		_own_until = Time.get_ticks_msec() + 1500
+
+
+static func _snd(name: String, volume_db := 0.0, pitch := 1.0) -> void:
+	if Time.get_ticks_msec() < _own_until:
+		return
+	Sfx.play(name, volume_db, pitch)
+
 
 ## Does this card have a look that plays ON the card it targets (see card_on)?
 static func aims(card_name: String) -> bool:
@@ -422,6 +459,7 @@ static func aims(card_name: String) -> bool:
 static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> void:
 	var n := card_name.to_lower()
 	var floor_at := Vector3(at.x, 0.03, at.z)
+	_own_sound(card_name)
 	if n.contains("ring of destruction"):
 		# The ring closes round it, its charges light one by one, and it goes off.
 		var red := Color("ff4a2a")
@@ -451,7 +489,7 @@ static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> vo
 			DuelFx.embers(board, floor_at, Color("ff7a2a"), 0.7, 60, 1.0, 3.6, 0.08)
 			DuelFx.glow(board, at + Vector3(0, 0.5, 0), Color("ffe0a0"), 3.0, 0.4, 0.8, 3.0)
 			board.shake(0.9)
-			Sfx.play("impact", -2.0, 0.7))
+			_snd("impact", -2.0, 0.7))
 	elif n.contains("spellbinding circle") or n.contains("shadow spell") or n.contains("fiendish chain"):
 		# A circle is written under it and chains come out of the four corners and hold it.
 		var col := Color("b06bff") if not n.contains("spellbinding") else Color("ffd76a")
@@ -463,7 +501,7 @@ static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> vo
 				if is_instance_valid(chain):
 					DuelFx.fade(chain, 0.25))
 		DuelFx.ring(board, floor_at, col, 1.6, 0.5, 0.4, 0.06, 0.2)
-		Sfx.play("trap", -4.0, 0.8)
+		_snd("trap", -4.0, 0.8)
 	elif n.contains("change of heart") or n.contains("brain control") or n.contains("mind control") or n.contains("snatch steal") or n.contains("enemy controller"):
 		# Light on one side of it and dark on the other, turning round it; then a thread to its new master.
 		board._swirl(at + Vector3(0, 0.7, 0), Color("fff0f6"))
@@ -474,7 +512,7 @@ static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> vo
 		DuelFx.embers(board, floor_at, Color("ffb0e6"), 0.5, 22, 0.9, 2.0, 0.05)
 		var to: Vector3 = board.monster_zone_pos(p, 2) + Vector3(0, 0.4, 0)
 		board.get_tree().create_timer(Settings.t(0.3)).timeout.connect(func(): _beam(board, at + Vector3(0, 0.6, 0), to, Color("ff7ad9"), 0.07))
-		Sfx.play("sparkle", -4.0, 0.9)
+		_snd("sparkle", -4.0, 0.9)
 	elif n.contains("book of moon"):
 		# A crescent crosses over it and night falls on that one zone.
 		var moon := MeshInstance3D.new()
@@ -494,7 +532,7 @@ static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> vo
 		mt.tween_callback(moon.queue_free)
 		DuelFx.pit(board, floor_at, 0.85, 0.9)
 		DuelFx.embers(board, floor_at, Color("bcd4ff"), 0.6, 24, 0.9, 1.4, 0.04)
-		Sfx.play("sparkle", -5.0, 0.6)
+		_snd("sparkle", -5.0, 0.6)
 	elif n.contains("compulsory evacuation"):
 		# The floor under it fires: it leaves straight up.
 		DuelFx.pillar(board, floor_at, Color("7fd8ff"), 0.5, 8.0, 0.6, 0.0, 2.6)
@@ -502,46 +540,46 @@ static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> vo
 		DuelFx.rect(board, floor_at, Color("ffd060"), 1.0, 1.5, 0.4, false, 2.6, 0.7)
 		DuelFx.sparks(board, floor_at, Color("fff0c0"), 40, 6.0, 1.0, 0.7, -9.0, 0.05)
 		board.shake(0.45)
-		Sfx.play("whoosh", -2.0, 1.4)
+		_snd("whoosh", -2.0, 1.4)
 	elif n.contains("dimensional prison"):
 		# A door in the air opens behind it, takes it, and shuts.
 		board._vortex(at + Vector3(0, 0.7, 0), Color("8a5cff"))
 		DuelFx.rect(board, floor_at, Color("8a5cff"), 2.2, 0.9, 0.5, false, 2.6, 0.5)
 		DuelFx.rect(board, floor_at, Color("d0b8ff"), 1.6, 0.6, 0.45, false, 2.6, 0.0)
 		DuelFx.pit(board, floor_at, 0.8, 0.8)
-		Sfx.play("whoosh", -3.0, 0.7)
+		_snd("whoosh", -3.0, 0.7)
 	elif n.contains("effect veiler"):
 		# A veil comes down over it and it goes quiet.
 		DuelFx.pillar(board, floor_at, Color("ffd0ee"), 0.6, 3.4, 0.9, 0.0, 1.6)
 		DuelFx.rect(board, floor_at, Color("ffffff"), 1.7, 1.0, 0.5, false, 2.0, 0.4)
 		DuelFx.embers(board, floor_at + Vector3(0, 2.4, 0), Color("ffe0f4"), 0.6, 30, 1.0, -2.2, 0.05)
 		DuelFx.ring(board, floor_at, Color("ff9ad8"), 1.6, 0.4, 0.5, 0.05)
-		Sfx.play("sparkle", -5.0, 1.2)
+		_snd("sparkle", -5.0, 1.2)
 	elif n == "shrink":
 		# Rings close on it, each smaller than the last.
 		for k in 4:
 			DuelFx.ring(board, floor_at + Vector3(0, 0.25 * k, 0), Color("7fe8ff"), 1.7 - 0.25 * k, 0.35, 0.4, 0.05, 0.07 * k)
 		DuelFx.glow(board, at + Vector3(0, 0.5, 0), Color("d0f8ff"), 1.4, 0.4, 0.5, 2.6)
-		Sfx.play("whoosh", -5.0, 1.8)
+		_snd("whoosh", -5.0, 1.8)
 	elif n.contains("raigeki break"):
 		_bolt(board, at)
 		board._flash(at + Vector3(0, 0.5, 0), Color("fff6a0"))
 		DuelFx.ring(board, floor_at, Color("ffe24d"), 0.3, 1.8, 0.45, 0.06)
 		DuelFx.sparks(board, at + Vector3(0, 0.3, 0), Color("fff6a0"), 30, 5.0, 0.8, 0.6, -8.0, 0.05)
 		board.shake(0.6)
-		Sfx.play("impact", -3.0, 1.6)
+		_snd("impact", -3.0, 1.6)
 	elif n.contains("phoenix wing wind blast"):
 		ElementFx.twister(board, floor_at, Color("ffb04a"), Color("ff5a2a"), 0.3, 1.0, 3.2, 0.7, 0.0, 1.8)
 		DuelFx.embers(board, floor_at, Color("ffd08a"), 0.6, 34, 0.9, 3.6, 0.07)
 		DuelFx.pillar(board, floor_at, Color("ffb04a"), 0.4, 6.0, 0.5, 0.15, 2.0)
-		Sfx.play("whoosh", -2.0, 1.2)
+		_snd("whoosh", -2.0, 1.2)
 	elif n.contains("offerings to the doomed"):
 		DuelFx.pit(board, floor_at, 0.95, 0.9)
 		DuelFx.pillar(board, floor_at, Color("7a3cff"), 0.45, 3.0, 0.8, 0.0, 1.8)
 		for k in 5:
 			var ang5 := float(k) * TAU / 5.0
 			ElementFx.spike(board, floor_at + Vector3(cos(ang5), 0, sin(ang5)) * 0.75, 0.08, 1.1, Color("2a0a4a"), Color("b06bff"), 0.03 * k, 0.3, floor_at, 0.55, 0.35)
-		Sfx.play("impact", -5.0, 0.6)
+		_snd("impact", -5.0, 0.6)
 	elif n.contains("thousand knives"):
 		# The knives come one after another, from above, all on the same card.
 		for k in 9:
@@ -553,13 +591,13 @@ static func card_on(board: Node3D, card_name: String, p: int, at: Vector3) -> vo
 		board.get_tree().create_timer(Settings.t(0.5)).timeout.connect(func():
 			DuelFx.ring(board, floor_at, Color("e8f0ff"), 0.3, 1.5, 0.4, 0.05)
 			board.shake(0.5)
-			Sfx.play("impact", -5.0, 1.6))
+			_snd("impact", -5.0, 1.6))
 	else:
 		# Mystical Space Typhoon, Twister, Dust Tornado: the wind on the very card it takes.
 		board._swirl(at + Vector3(0, 0.6, 0), Color("9fffd0"))
 		board._swirl(at + Vector3(0, 0.9, 0), Color("d8fff0"))
 		DuelFx.ring(board, floor_at, Color("9fffd0"), 0.3, 1.3, 0.4, 0.05)
-		Sfx.play("whoosh", -2.0, 1.0)
+		_snd("whoosh", -2.0, 1.0)
 
 
 ## A tube of light with a bright rim at each end, lying on its side, facing along `dir`.
@@ -611,7 +649,7 @@ static func _magic_cylinder(board: Node3D, p: int, attacker: Vector3) -> void:
 	var tube_b := _tube(board, b_at, (their_seat - b_at).normalized(), pink)
 	DuelFx.ring(board, Vector3(a_at.x, 0.03, a_at.z), pink, 0.3, 1.1, 0.4, 0.05)
 	DuelFx.ring(board, Vector3(b_at.x, 0.03, b_at.z), pink, 0.3, 1.1, 0.4, 0.05, 0.06)
-	Sfx.play("trap", -4.0, 1.3)
+	_snd("trap", -4.0, 1.3)
 	var tree := board.get_tree()
 	# In: the attack is pulled into the first one.
 	tree.create_timer(Settings.t(0.36)).timeout.connect(func():
@@ -630,7 +668,7 @@ static func _magic_cylinder(board: Node3D, p: int, attacker: Vector3) -> void:
 		DuelFx.rays(board, Vector3(their_seat.x, 0.03, their_seat.z * 0.72), pink, 2.4, 0.45, 24)
 		DuelFx.ring(board, Vector3(their_seat.x, 0.03, their_seat.z * 0.72), pink, 0.3, 2.6, 0.5, 0.07)
 		board.shake(0.8)
-		Sfx.play("impact", -3.0, 1.1))
+		_snd("impact", -3.0, 1.1))
 	for tube in [tube_a, tube_b]:
 		var tw := (tube as Node3D).create_tween()
 		tw.tween_interval(Settings.t(1.4))
@@ -697,7 +735,7 @@ static func _mirror_force(board: Node3D, p: int, attacker: Vector3) -> void:
 	tw.tween_callback(wall.queue_free)
 	for k in 6:
 		board._ring_fx(wall_at + Vector3(-3.6 + k * 1.44, 0.05, 0), gold, 0.4, k * 0.02, 1.8)
-	Sfx.play("trap", -5.0, 1.2)
+	_snd("trap", -5.0, 1.2)
 	var tree := board.get_tree()
 	var hit_at := Vector3(clampf(attacker.x, -4.0, 4.0), 0.85, wall_at.z)
 	# The attack lands on the mirror...
@@ -726,12 +764,12 @@ static func _mirror_force(board: Node3D, p: int, attacker: Vector3) -> void:
 			DuelFx.ring(board, Vector3(to.x, 0.03, to.z), gold, 0.3, 1.4, 0.4, 0.05))
 	tree.create_timer(Settings.t(0.62)).timeout.connect(func():
 		board.shake(0.75)
-		Sfx.play("impact", -3.0, 1.4))
+		_snd("impact", -3.0, 1.4))
 	# The mirror breaks.
 	tree.create_timer(Settings.t(1.1)).timeout.connect(func():
 		board._shatter(wall_at + Vector3(-2.2, 0.7, 0), gold, Vector3.ZERO, "few")
 		board._shatter(wall_at + Vector3(2.2, 0.7, 0), gold, Vector3.ZERO, "few")
-		Sfx.play("destroy", -8.0, 1.5))
+		_snd("destroy", -8.0, 1.5))
 
 
 ## Torrential Tribute: a wall of water crosses the whole table and takes every monster with it.
@@ -770,8 +808,8 @@ static func _torrent(board: Node3D) -> void:
 				DuelFx.ring(board, Vector3(at.x, 0.03, at.z), blue, 0.2, 1.2, 0.45, 0.04, 0.0, 1.5)
 				DuelFx.sparks(board, at + Vector3(0, 0.2, 0), Color("cfeaff"), 16, 4.2, 0.9, 0.7, -12.0, 0.05))
 	board.shake(0.8)
-	Sfx.play("whoosh", -1.0, 0.6)
-	tree.create_timer(Settings.t(0.5)).timeout.connect(func(): Sfx.play("impact", -5.0, 0.6))
+	_snd("whoosh", -1.0, 0.6)
+	tree.create_timer(Settings.t(0.5)).timeout.connect(func(): _snd("impact", -5.0, 0.6))
 
 
 ## Solemn Judgment (and Warning, and Strike): a light comes straight down on their side of the
@@ -787,14 +825,14 @@ static func _solemn(board: Node3D, o: int) -> void:
 	DuelFx.ring(board, at, gold, 0.4, 3.6, 0.6, 0.09)
 	DuelFx.embers(board, at, gold, 1.2, 50, 1.1, 3.4, 0.06)
 	board.shake(0.7)
-	Sfx.play("trap", -3.0, 0.7)
+	_snd("trap", -3.0, 0.7)
 	var tree := board.get_tree()
 	tree.create_timer(Settings.t(0.32)).timeout.connect(func():
 		_beam(board, at + Vector3(-2.4, 2.6, 0), at + Vector3(2.4, 0.4, 0), gold, 0.16)
 		_beam(board, at + Vector3(2.4, 2.6, 0), at + Vector3(-2.4, 0.4, 0), gold, 0.16)
 		DuelFx.glow(board, at + Vector3(0, 1.5, 0), Color.WHITE, 3.0, 0.4, 0.9, 3.0)
 		DuelFx.rays(board, at, Color.WHITE, 3.0, 0.4, 28)
-		Sfx.play("impact", -3.0, 0.9))
+		_snd("impact", -3.0, 0.9))
 
 
 ## Bottomless Trap Hole: the floor opens much wider than a card, and what stood there keeps falling.
@@ -806,7 +844,7 @@ static func _bottomless(board: Node3D, at: Vector3) -> void:
 	DuelFx.embers(board, floor_at, Color("7a3cff"), 1.1, 34, 0.9, -1.4, 0.05)
 	DuelFx.spiral(board, floor_at, Color("7a3cff"), Color("1a0a3a"), 1.4, 1.0)
 	board.shake(0.5)
-	Sfx.play("impact", -5.0, 0.5)
+	_snd("impact", -5.0, 0.5)
 
 
 ## Burst Stream of Destruction: one white breath that crosses their whole row from end to end.
@@ -818,7 +856,7 @@ static func _burst_stream(board: Node3D, p: int) -> void:
 	var from: Vector3 = board.monster_zone_pos(p, 2) + Vector3(0, 1.4, 0)
 	DuelFx.glow(board, from, white, 2.2, 0.5, 0.9, 3.0)
 	DuelFx.rays(board, from, blue, 1.6, 0.4, 20, false)
-	Sfx.play("charge", -4.0, 1.3)
+	_snd("charge", -4.0, 1.3)
 	var tree := board.get_tree()
 	for z in 5:
 		var to: Vector3 = board.monster_zone_pos(o, z if p == 0 else 4 - z)
@@ -830,7 +868,7 @@ static func _burst_stream(board: Node3D, p: int) -> void:
 			DuelFx.sparks(board, to + Vector3(0, 0.3, 0), white, 12, 4.5, 0.8, 0.5, -8.0, 0.05))
 	tree.create_timer(Settings.t(0.3)).timeout.connect(func():
 		board.shake(1.0)
-		Sfx.play("impact", -2.0, 1.2))
+		_snd("impact", -2.0, 1.2))
 
 
 ## Dark Magic Attack: a wave of dark magic rolls over every Spell and Trap they have.
@@ -841,7 +879,7 @@ static func _dark_magic_attack(board: Node3D, p: int) -> void:
 	var from: Vector3 = board.monster_zone_pos(p, 2) + Vector3(0, 1.2, 0)
 	DuelFx.glyph(board, Vector3(from.x, 0.03, from.z), violet, 1.2, 1.0, {"star": 6, "rings": 2, "turn": 2.0})
 	DuelFx.glow(board, from, violet, 1.8, 0.5, 0.8, 2.8)
-	Sfx.play("charge", -4.0, 0.9)
+	_snd("charge", -4.0, 0.9)
 	var tree := board.get_tree()
 	for z in 5:
 		var to: Vector3 = board.st_pos(o, z)
@@ -851,7 +889,7 @@ static func _dark_magic_attack(board: Node3D, p: int) -> void:
 			DuelFx.embers(board, Vector3(to.x, 0.03, to.z), Color("e0c0ff"), 0.4, 14, 0.8, 2.0, 0.05))
 	tree.create_timer(Settings.t(0.34)).timeout.connect(func():
 		board.shake(0.7)
-		Sfx.play("impact", -4.0, 0.8))
+		_snd("impact", -4.0, 0.8))
 
 
 ## Burn Spells (Hinotama, Ookazi, Tremendous Fire...): fire falls on the other duelist's side.
@@ -868,7 +906,7 @@ static func _burn(board: Node3D, p: int) -> void:
 			DuelFx.glow(board, land + Vector3(0, 0.4, 0), Color("ffe0a0"), 2.0, 0.4, 0.8, 3.0)
 			DuelFx.ring(board, land, fire, 0.3, 1.8, 0.45, 0.07)
 			DuelFx.embers(board, land, fire, 0.6, 26, 1.0, 2.8, 0.07)
-			Sfx.play("impact", -5.0, 0.9 + 0.15 * k))
+			_snd("impact", -5.0, 0.9 + 0.15 * k))
 	board.shake(0.7)
 
 
@@ -880,7 +918,7 @@ static func _heal(board: Node3D, p: int) -> void:
 	DuelFx.ring(board, seat, green, 2.4, 0.5, 0.6, 0.06)
 	DuelFx.ring(board, seat, Color("e0ffe8"), 1.8, 0.3, 0.6, 0.04, 0.15)
 	DuelFx.embers(board, seat, Color("d0ffe0"), 1.4, 40, 1.3, 2.4, 0.06)
-	Sfx.play("sparkle", -4.0, 0.8)
+	_snd("sparkle", -4.0, 0.8)
 
 
 # ------------------------------------------------------------------ the second batch (0.85.0)
@@ -904,7 +942,7 @@ static func _sweep_back(board: Node3D, p: int, kind: String) -> void:
 	elif kind == "duster":
 		DuelFx.embers(board, Vector3(0, 2.0, board.st_pos(o, 2).z), Color("f0fff6"), 3.6, 40, 1.3, -1.2, 0.09)
 	board.shake(0.7 if kind != "cold" else 0.3)
-	Sfx.play("whoosh", -1.0, 0.8 if kind != "cold" else 1.8)
+	_snd("whoosh", -1.0, 0.8 if kind != "cold" else 1.8)
 
 
 static func _sweep_one(board: Node3D, kind: String, at: Vector3) -> void:
@@ -943,8 +981,8 @@ static func _super_poly(board: Node3D) -> void:
 		DuelFx.ring(board, Vector3(0, 0.03, 0), Color("b06bff"), 0.4, 4.2, 0.6, 0.09)
 		DuelFx.rays(board, Vector3(0, 0.03, 0), Color("ffffff"), 3.0, 0.45, 30)
 		board.shake(0.9)
-		Sfx.play("impact", -2.0, 0.7))
-	Sfx.play("charge", -3.0, 0.7)
+		_snd("impact", -2.0, 0.7))
+	_snd("charge", -3.0, 0.7)
 
 
 ## De-Fusion: one light comes apart into two, and each goes its own way.
@@ -960,7 +998,7 @@ static func _defusion(board: Node3D, p: int) -> void:
 		tw.tween_property(orb, "position", at + Vector3(-1.3 if i == 0 else 1.3, 0.9, 0), Settings.t(0.28)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(orb, "position", land, Settings.t(0.3)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tw.tween_callback(orb.pop.bind(1.2))
-	Sfx.play("sparkle", -4.0, 0.7)
+	_snd("sparkle", -4.0, 0.7)
 
 
 ## Power Bond: the current doubles.
@@ -979,7 +1017,7 @@ static func _power_bond(board: Node3D, mine: Vector3) -> void:
 		DuelFx.pillar(board, floor_at + Vector3(-0.5 + k, 0, 0), blue, 0.3, 5.0, 0.7, 0.3, 2.4)
 		DuelFx.ring(board, floor_at, Color.WHITE if k == 0 else blue, 0.3, 2.2 + 0.8 * k, 0.5, 0.07, 0.3 + 0.08 * k)
 	board.shake(0.8)
-	Sfx.play("impact", -3.0, 1.7)
+	_snd("impact", -3.0, 1.7)
 
 
 ## Limiter Removal: every one of its monsters runs past its limit.
@@ -993,7 +1031,7 @@ static func _limiter(board: Node3D, p: int) -> void:
 			DuelFx.sparks(board, at + Vector3(0, 0.2, 0), Color("ffe0a0"), 16, 4.5, 1.6, 0.6, -7.0, 0.05)
 			DuelFx.pillar(board, floor_at, hot, 0.3, 2.4, 0.5, 0.0, 2.2))
 	board.shake(0.5)
-	Sfx.play("charge", -3.0, 1.6)
+	_snd("charge", -3.0, 1.6)
 
 
 ## Crush Card Virus and its kin: the infection runs along their row, then to their hand and their Deck.
@@ -1016,7 +1054,7 @@ static func _virus(board: Node3D, o: int) -> void:
 			DuelFx.pit(board, floor_at, 0.6, 0.7)
 			DuelFx.embers(board, floor_at, Color("c58aff"), 0.45, 16, 0.9, 1.4, 0.06)
 			DuelFx.ring(board, floor_at, sick, 0.2, 1.1, 0.4, 0.05))
-	Sfx.play("trap", -3.0, 0.6)
+	_snd("trap", -3.0, 0.6)
 	tree.create_timer(Settings.t(0.6)).timeout.connect(func(): board.shake(0.5))
 
 
@@ -1031,8 +1069,8 @@ static func _sakuretsu(board: Node3D, at: Vector3) -> void:
 		DuelFx.glow(board, at + Vector3(0, 0.5, 0), Color.WHITE, 2.0, 0.35, 0.9, 3.0)
 		DuelFx.sparks(board, at + Vector3(0, 0.4, 0), Color("e0e8ff"), 34, 6.0, 0.7, 0.6, -8.0, 0.05)
 		board.shake(0.7)
-		Sfx.play("impact", -3.0, 1.5))
-	Sfx.play("trap", -4.0, 1.4)
+		_snd("impact", -3.0, 1.5))
+	_snd("trap", -4.0, 1.4)
 
 
 ## Negate Attack: a whirl opens in the attack's way and swallows it.
@@ -1048,7 +1086,7 @@ static func _negate_attack(board: Node3D, p: int, attacker: Vector3) -> void:
 		board.get_tree().create_timer(Settings.t(0.18)).timeout.connect(func():
 			_beam(board, attacker + Vector3(0, 0.6, 0), at, Color("ffd0a0"), 0.22)
 			DuelFx.glow(board, at, Color.WHITE, 1.8, 0.4, 0.7, 2.8))
-	Sfx.play("whoosh", -3.0, 0.6)
+	_snd("whoosh", -3.0, 0.6)
 
 
 ## Threatening Roar: the sound itself crosses the table.
@@ -1061,7 +1099,7 @@ static func _roar(board: Node3D, p: int) -> void:
 		SigFx._hoop(board, from.lerp(to, 0.1 + 0.18 * k), dir, Color("ffb04a") if k % 2 == 0 else Color("ff5a2a"), 0.6, 2.4 + 0.5 * k, 0.45, 0.07 * k)
 	DuelFx.rays(board, _seat(p), Color("ffb04a"), 2.4, 0.4, 24)
 	board.shake(1.0)
-	Sfx.play("impact", -1.0, 0.5)
+	_snd("impact", -1.0, 0.5)
 
 
 ## Gravity Bind, Level Limit - Area B, Messenger of Peace: a weight comes down on every monster zone.
@@ -1075,7 +1113,7 @@ static func _gravity(board: Node3D) -> void:
 			DuelFx.rect(board, Vector3(at.x, 0.03, at.z), heavy.lightened(0.3), 1.7, 1.0, 0.5, false, 2.2, 0.35)
 			DuelFx.embers(board, Vector3(at.x, 1.4, at.z), heavy.lightened(0.4), 0.4, 6, 0.6, -2.6, 0.05)
 	board.shake(0.4)
-	Sfx.play("impact", -5.0, 0.45)
+	_snd("impact", -5.0, 0.45)
 
 
 ## Scapegoat: four little lights of four colors pop up in a row.
@@ -1087,7 +1125,7 @@ static func _scapegoat(board: Node3D, p: int) -> void:
 			DuelFx.glow(board, at, cols[k], 1.1, 0.5, 0.4, 2.4)
 			DuelFx.ring(board, Vector3(at.x, 0.03, at.z), cols[k], 0.2, 0.9, 0.4, 0.05)
 			DuelFx.sparks(board, at, cols[k].lightened(0.3), 10, 2.6, 1.4, 0.6, -5.0, 0.05)
-			Sfx.play("blip", -6.0, 1.0 + 0.15 * k))
+			_snd("blip", -6.0, 1.0 + 0.15 * k))
 
 
 ## Card of Sanctity: light comes down on both duelists alike.
@@ -1099,7 +1137,7 @@ static func _sanctity(board: Node3D) -> void:
 		DuelFx.pillar(board, seat, gold, 1.2, 7.0, 1.1, 0.1 * side, 1.8)
 		DuelFx.embers(board, seat + Vector3(0, 3.6, 0), gold, 1.6, 40, 1.3, -2.4, 0.06)
 		DuelFx.ring(board, seat, gold, 0.4, 2.6, 0.7, 0.06, 0.1 * side)
-	Sfx.play("sparkle", -3.0, 0.8)
+	_snd("sparkle", -3.0, 0.8)
 
 
 ## Skill Drain: what every monster on the table can do is drawn out of it.
@@ -1114,7 +1152,7 @@ static func _skill_drain(board: Node3D, p: int) -> void:
 				_beam(board, from, to, dim, 0.045)
 				DuelFx.ring(board, Vector3(from.x, 0.03, from.z), dim, 1.2, 0.3, 0.4, 0.04))
 	DuelFx.glow(board, to, Color("c0b0ff"), 2.0, 0.7, 0.6, 2.6)
-	Sfx.play("charge", -4.0, 0.5)
+	_snd("charge", -4.0, 0.5)
 
 
 ## Royal Decree, Imperial Order: both back rows are sealed, a bar across each.
@@ -1129,7 +1167,7 @@ static func _seal(board: Node3D) -> void:
 			var at: Vector3 = board.st_pos(side, z)
 			DuelFx.rect(board, Vector3(at.x, 0.03, at.z), red, 1.5, 1.0, 0.45, false, 2.4, 0.3)
 	board.shake(0.5)
-	Sfx.play("trap", -3.0, 0.8)
+	_snd("trap", -3.0, 0.8)
 
 
 ## Final Countdown: a clock face lights in the middle of the table and starts to turn.
@@ -1144,7 +1182,7 @@ static func _countdown(board: Node3D) -> void:
 			var ang := -PI / 2.0 + 0.5 * k
 			_beam(board, hand, hand + Vector3(cos(ang), 0, sin(ang)) * 2.4, gold, 0.05)
 			DuelFx.ring(board, mid, gold, 2.6, 2.9, 0.3, 0.05)
-			Sfx.play("blip", -4.0, 0.7))
+			_snd("blip", -4.0, 0.7))
 
 
 ## Destiny Board: five lights in a row over its back row, lit one after another.
@@ -1158,7 +1196,7 @@ static func _destiny_board(board: Node3D, p: int) -> void:
 			DuelFx.glow(board, at, violet, 1.0, 0.9 - 0.1 * z, 0.5, 2.6)
 			if before != Vector3.INF:
 				_beam(board, before, at, violet, 0.03)
-			Sfx.play("blip", -7.0, 0.6 + 0.1 * z))
+			_snd("blip", -7.0, 0.6 + 0.1 * z))
 		prev = at
 
 
@@ -1174,7 +1212,7 @@ static func _honest(board: Node3D, at: Vector3) -> void:
 	DuelFx.pillar(board, Vector3(at.x, 0.03, at.z), gold, 0.6, 5.0, 0.8, 0.0, 2.2)
 	DuelFx.embers(board, Vector3(at.x, 0.03, at.z), gold, 0.8, 34, 1.1, 2.6, 0.06)
 	DuelFx.ring(board, Vector3(at.x, 0.03, at.z), gold, 0.3, 2.0, 0.5, 0.06)
-	Sfx.play("sparkle", -3.0, 1.0)
+	_snd("sparkle", -3.0, 1.0)
 
 
 ## Kuriboh: a wall of little round lights stands in the way for an instant.
@@ -1190,7 +1228,7 @@ static func _kuriboh(board: Node3D, p: int) -> void:
 				if is_instance_valid(orb):
 					orb.pop(0.7)))
 	DuelFx.ring(board, Vector3(0, 0.03, z0), fur, 0.4, 3.2, 0.6, 0.06)
-	Sfx.play("blip", -4.0, 1.4)
+	_snd("blip", -4.0, 1.4)
 
 
 ## Battle Fader: a bell rings and the Battle Phase is over.
@@ -1200,7 +1238,7 @@ static func _fader(board: Node3D, p: int) -> void:
 	for k in 3:
 		DuelFx.ring(board, seat, gold, 0.4, 3.0 + 1.6 * k, 0.7, 0.07, 0.14 * k)
 	DuelFx.glow(board, seat + Vector3(0, 1.4, 0), gold, 2.4, 0.6, 0.8, 2.8)
-	Sfx.play("coin", -2.0, 0.6)
+	_snd("coin", -2.0, 0.6)
 
 
 ## Swift Scarecrow: two crossed staves stand in front of the attacker.
@@ -1213,7 +1251,7 @@ static func _scarecrow(board: Node3D, p: int, attacker: Vector3) -> void:
 	DuelFx.glow(board, at, straw, 1.8, 0.4, 0.7, 2.8)
 	DuelFx.sparks(board, at, straw, 26, 4.0, 0.6, 0.6, -6.0, 0.05)
 	DuelFx.ring(board, Vector3(at.x, 0.03, at.z), straw, 0.3, 1.8, 0.45, 0.06)
-	Sfx.play("trap", -4.0, 1.5)
+	_snd("trap", -4.0, 1.5)
 
 
 ## Ash Blossom & Joyous Spring: petals blow across their side and what they started stops.
@@ -1225,4 +1263,4 @@ static func _ash(board: Node3D, o: int) -> void:
 		var at: Vector3 = board.monster_zone_pos(o, z)
 		DuelFx.ring(board, Vector3(at.x, 0.03, at.z), pink, 0.2, 1.0, 0.45, 0.04, 0.05 * z)
 	DuelFx.ring(board, _seat(o), Color.WHITE, 2.4, 0.4, 0.5, 0.06)
-	Sfx.play("sparkle", -4.0, 1.3)
+	_snd("sparkle", -4.0, 1.3)
