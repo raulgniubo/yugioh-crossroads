@@ -38,6 +38,7 @@ func _ready() -> void:
 	_test_trio()
 	await _test_cards_gate()
 	_test_lumen_081()
+	_test_duel_fx_083()
 	_test_classes()
 	_test_circle()
 	var stress := OS.get_environment("STRESS_FOLDER")
@@ -11884,6 +11885,25 @@ func _test_cards_gate() -> void:
 
 ## (0.81.0) Lumen's new cards: two more forms, the Echo monsters, Spells and Traps; her three
 ## decks in the deck shops; the Echo Pack holding the cards around her from the first day.
+## (0.83.0) The duel's newer animations: every ace with an entrance of its own is a card the game
+## has, with two colors, a figure the show can draw, a line in Spanish; every Attribute has a way
+## for a card it destroys to go.
+func _test_duel_fx_083() -> void:
+	var figures := ["cards", "circle", "lightning", "flames", "aurora", "nova", "hex", "rays", "stars", "gears", "petals", "feathers", "galaxy", "waves", "streaks"]
+	var es := TranslationServer.get_translation_object("es")
+	check(SummonShow.SIGNATURE.size() >= 56, "56 aces or more have an entrance of their own (%d)" % SummonShow.SIGNATURE.size())
+	var whole_db := CardData.NAME_TO_ID.has("dark magician")      # (the test run may not have the card database: then names are not checked here)
+	for nm in SummonShow.SIGNATURE:
+		var spec: Array = SummonShow.SIGNATURE[nm]
+		check(not whole_db or CardData.NAME_TO_ID.has(str(nm).to_lower()) or CardData.ORIGINALS.any(func(id): return str(CardData.get_card(id).get("name", "")) == str(nm)), "entrance: the game has a card called %s" % nm)
+		check(spec.size() == 5 and Color.html_is_valid(str(spec[0])) and Color.html_is_valid(str(spec[1])) and str(spec[2]) in figures, "entrance: %s has two colors and a figure the show draws" % nm)
+		check(es != null and str(es.get_message(str(spec[3]))) != "", "entrance: the line of %s is in Spanish" % nm)
+	var board_script: GDScript = load("res://scripts/duel/duel_board.gd")
+	var looks: Dictionary = board_script.get_script_constant_map().get("DESTROY_LOOKS", {})
+	for attr in ["FIRE", "WATER", "WIND", "EARTH", "LIGHT", "DARK", "DIVINE"]:
+		check(looks.has(attr) and str((looks[attr] as Array)[0]) in ["burn", "splash", "blow", "crumble", "rise", "sink"], "a card destroyed by a %s monster has its own way to go" % attr)
+
+
 func _test_lumen_081() -> void:
 	var es = JSON.parse_string(FileAccess.get_file_as_string("res://data/card_text_es.json"))
 	var codes := {}

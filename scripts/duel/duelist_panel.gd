@@ -12,6 +12,7 @@ var portrait: TextureRect
 var name_label: Label
 var lp_label: Label
 var lp_bar: ColorRect
+var lp_ghost: ColorRect      # the Life Points just lost: they stay lit for a moment, then drain (0.83.0)
 var counts: Label
 var fate: Label                   # "★ DESTINY": gold while this duelist still has a Destiny Draw, dim once it is used
 var _front: Control
@@ -75,6 +76,10 @@ func _init(p: int) -> void:
 	bar_bg.position = Vector2(x0, 116)
 	bar_bg.size = Vector2(BAR_W, 6)
 	_front.add_child(bar_bg)
+	lp_ghost = ColorRect.new()
+	lp_ghost.color = Color(1.0, 0.96, 0.82, 0.92)
+	lp_ghost.size = Vector2(BAR_W, 6)
+	bar_bg.add_child(lp_ghost)
 	lp_bar = ColorRect.new()
 	lp_bar.color = Comic.GREEN
 	lp_bar.size = Vector2(BAR_W, 6)

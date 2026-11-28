@@ -23,6 +23,7 @@ const HAND_CARD := Vector2(150, 218)
 
 var _lp_labels: Array[Label] = [null, null]
 var _lp_bars: Array[ColorRect] = [null, null]
+var _lp_ghosts: Array[ColorRect] = [null, null]
 var _lp_values := [8000.0, 8000.0]
 var _count_labels: Array[Label] = [null, null]
 var _hand_root: Control
@@ -151,6 +152,7 @@ func _plate(p: int) -> Control:
 	_name_labels[p] = dp.name_label
 	_lp_labels[p] = dp.lp_label
 	_lp_bars[p] = dp.lp_bar
+	_lp_ghosts[p] = dp.lp_ghost
 	dp.counts.tooltip_text = "See the Graveyard and banished cards"
 	dp.counts.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
@@ -457,6 +459,19 @@ func set_lp(p: int, lp: int, delta: int) -> void:
 	var btw := create_tween()
 	btw.tween_interval(lag)
 	btw.tween_property(bar, "size:x", DuelistPanel.BAR_W * clampf(lp / 8000.0, 0.0, 1.0), Settings.t(0.55)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	# (0.83.0) What was just lost stays on the bar, lit, for a moment after the bar itself has dropped,
+	# and then drains away: you see how big the hit was, not only where it left you.
+	var ghost := _lp_ghosts[p]
+	if ghost != null:
+		var to_w := DuelistPanel.BAR_W * clampf(lp / 8000.0, 0.0, 1.0)
+		var gtw := create_tween()
+		if delta < 0:
+			ghost.size.x = maxf(ghost.size.x, bar.size.x)
+			gtw.tween_interval(lag + Settings.t(0.95))
+			gtw.tween_property(ghost, "size:x", to_w, Settings.t(0.5)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		else:
+			gtw.tween_interval(lag)
+			gtw.tween_property(ghost, "size:x", to_w, Settings.t(0.2))
 	var col := UITheme.DANGER if delta < 0 else Color("4fd18b")
 	lbl.add_theme_color_override("font_color", col)
 	create_tween().tween_method(func(c: Color): lbl.add_theme_color_override("font_color", c), col, Color.WHITE, Settings.t(1.0))

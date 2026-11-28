@@ -1843,6 +1843,7 @@ func _play_event(ev: Dictionary) -> void:
 			var mine := p == ME
 			_turn_seen = true
 			_my_summons_now = 0
+			_fate[p] = state.turn if _fate_draw(p) else -1
 			if mine:
 				_my_turns += 1
 			Sfx.play("turn")
@@ -1914,7 +1915,17 @@ func _play_event(ev: Dictionary) -> void:
 			elif not _dealt.has(p):
 				_dealt[p] = true      # (the opening hand: one pull of the arm for the five cards)
 				board.duelist_act(p, "draw")
-			await board.anim_draw(p, ev["card"], ev["deck"])
+			if _fate[p] == state.turn and not _autoplay:
+				# (0.83.0) The draw everything rides on: it takes its moment.
+				_fate[p] = -1
+				_fated[p] = true
+				ScreenFx.letterbox(hud, 1.9)
+				if p == ME:
+					hud.effect_text(Loc.t("Everything rides on this draw"), Color("ffd76a"))
+					Pad.rumble(0.25, 0.35, 0.3)
+				await board.anim_draw_fate(p, ev["card"], ev["deck"])
+			else:
+				await board.anim_draw(p, ev["card"], ev["deck"])
 			if p == ME and state.turn > 4 and int(ev["deck"]) <= 3:
 				_lumen("thin_deck")
 			if p == ME:
@@ -2139,7 +2150,15 @@ func _play_event(ev: Dictionary) -> void:
 				_spill_until = Time.get_ticks_msec() + 4000
 			else:
 				_spill_at = Vector3.INF
+			_hit = {}
+			if ev["target"] != null:
+				var a3 := board.card_for(ev["card"])
+				var t3b := board.card_for(ev["target"])
+				if a3 != null and t3b != null:
+					_hit = {"a": ev["card"], "t": ev["target"], "a_at": a3.get_meta("home", a3.transform).origin, "t_at": t3b.position, "until": 0}
 			await board.anim_battle(p, ev["card"], ev["target"])
+			if not _hit.is_empty():
+				_hit["until"] = Time.get_ticks_msec() + 3500      # (whatever this fight destroys, in the next moments)
 		"attack_stopped":
 			await board.anim_attack_stopped(ev["card"])
 		"set_st":
@@ -2170,7 +2189,7 @@ func _play_event(ev: Dictionary) -> void:
 			await board.anim_spell_done(ev["card"])
 		"destroy_st":
 			Sfx.play("destroy", -4.0)
-			await board.anim_destroy(ev["card"])
+			await board.anim_destroy(ev["card"], [], _destroyed_by(ev["card"]))
 		"hand_effect":
 			if p == ME:
 				_leave_hand(ev["card"])
@@ -2216,6 +2235,7 @@ func _play_event(ev: Dictionary) -> void:
 			var fx_kind := CardFx.kind(fx_src, str(ev.get("label", "")))
 			_fx_card = fx_src
 			_fx_kind = fx_kind
+			_fx_ms = Time.get_ticks_msec()
 			_fx_p = p
 			if on_field:
 				board.effect_burst(ev["card"], CardFx.color(fx_kind))
@@ -2253,7 +2273,7 @@ func _play_event(ev: Dictionary) -> void:
 				_talk(p, "destroyed")
 			board.hide_stats_for(ev["card"])
 			Sfx.play("destroy", -3.0)
-			await board.anim_destroy(ev["card"], ev.get("overlays", []))
+			await board.anim_destroy(ev["card"], ev.get("overlays", []), _destroyed_by(ev["card"]))
 		"material":
 			board.hide_stats_for(ev["card"])
 			if ev["from"] == "hand" and p == ME:
@@ -2926,6 +2946,46 @@ func _exit_tree() -> void:
 
 
 var _fx_card = null        # the card whose effect was just activated (CardFx)
+var _fx_ms := 0             # when it was activated
+var _fate := [-1, -1]       # the turn whose own draw is "the draw everything rides on" for each duelist (-1: none)
+var _fated := [false, false]      # ...which each of them gets once a duel
+
+
+## Is this duelist's coming draw the one everything rides on? Asked as their turn begins: 2000 Life
+## Points or fewer, a card in hand at most, and either nothing of theirs on the field or a monster
+## across the table strong enough to end it.
+func _fate_draw(p: int) -> bool:
+	if _autoplay or board.turbo or board.track != null or _fated[p] or state.turn <= 2 or not _puzzle.is_empty():
+		return false
+	var me = state.players[p]
+	if int(me.lp) > 2000 or me.hand.size() > 1 or me.deck.is_empty():
+		return false
+	var mine := 0
+	for m in me.field:
+		if m != null and m.is_monster():
+			mine += 1
+	var worst := 0
+	for m in state.players[1 - p].field:
+		if m != null and m.is_monster() and m.face_up:
+			worst = maxi(worst, int(m.atk()))
+	return mine == 0 or worst >= int(me.lp)
+var _hit := {}              # the last battle: {"a": attacker, "t": target, "a_at", "t_at", "until"} (how a card it destroys goes)
+
+
+## What took this card down, for how it goes (board.anim_destroy): the monster it just fought, or
+## the card whose effect is resolving. Empty when nothing is known: it breaks the plain way.
+func _destroyed_by(gone) -> Dictionary:
+	if gone == null or _autoplay:
+		return {}
+	var now := Time.get_ticks_msec()
+	if not _hit.is_empty() and now < int(_hit["until"]) and (gone == _hit["t"] or gone == _hit["a"]):
+		var other = _hit["a"] if gone == _hit["t"] else _hit["t"]
+		return {"kind": "battle", "from": _hit["a_at"] if gone == _hit["t"] else _hit["t_at"], "attr": ElementFx.attr_of(other)}
+	if _fx_card != null and _fx_card != gone and now - _fx_ms < 6000:
+		var d: Dictionary = _fx_card.data
+		var k := str(d.get("kind", "monster"))
+		return {"kind": "effect", "from": _fx_at, "attr": ElementFx.attr_of(_fx_card) if k == "monster" else "", "st": k if k != "monster" else ""}
+	return {}
 var _fx_kind := ""
 var _spill_at := Vector3.INF      # where the last clash between two monsters landed
 var _spill_until := 0
@@ -2942,6 +3002,7 @@ func _card_look(p: int, card, label: String) -> void:
 	var k := CardFx.kind(card, label)
 	_fx_card = card
 	_fx_kind = k
+	_fx_ms = Time.get_ticks_msec()
 	_fx_p = p
 	_fx_at = board.chain_spot(card, p)
 	if not _autoplay:

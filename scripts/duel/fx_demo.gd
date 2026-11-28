@@ -61,6 +61,51 @@ static func _play(scene, board, st, name: String) -> void:
 	match name:
 		# (0.81.0) Lumen's cards: lumen_summon, lumen_battle, lumen_finish, lumen_field,
 		# lumen_aurora (Ritual), lumen_nova / lumen_chorus (Fusion), lumen_comet (Synchro), lumen_zenith (Xyz)
+		# (0.83.0) How a card goes, by what destroyed it: gone_fire / water / wind / earth / light / dark
+		# (an effect of a monster of that Attribute), gone_battle (FIRE, in a fight), gone_spell, gone_trap.
+		"gone_fire", "gone_water", "gone_wind", "gone_earth", "gone_light", "gone_dark", "gone_battle", "gone_spell", "gone_trap":
+			var gk := name.trim_prefix("gone_")
+			var gm = _mk(st, "Dark Magician", AI)
+			var gc: Card3D = board._new_card(gm)
+			gc.transform = Transform3D(board.table_basis(AI, true, true), board.monster_zone_pos(AI, 2) + Vector3(0, 0.02, 0))
+			await scene.get_tree().create_timer(0.4).timeout
+			var gfrom: Vector3 = board.monster_zone_pos(ME, 1)
+			var ghow := {"kind": "effect", "from": gfrom, "attr": gk.to_upper(), "st": ""}
+			if gk == "battle":
+				ghow = {"kind": "battle", "from": gfrom, "attr": "EARTH"}
+			elif gk in ["spell", "trap"]:
+				ghow = {"kind": "effect", "from": gfrom, "attr": "", "st": gk}
+			await board.anim_destroy(gm, [], ghow)
+			await scene.get_tree().create_timer(1.0).timeout
+		# The draw everything rides on (fate_draw: yours, fate_draw_opp: theirs), and a hit on the Life
+		# Points bar (lp_hit), and the entrance of one of the newer aces (ace_new, FX_ACE=<card name>).
+		"fate_draw", "fate_draw_opp":
+			var fp := ME if name == "fate_draw" else AI
+			ScreenFx.letterbox(scene.hud, 1.9)
+			if fp == ME:
+				scene.hud.effect_text(Loc.t("Everything rides on this draw"), Color("ffd76a"))
+			await board.anim_draw_fate(fp, _mk(st, "Dark Magician", fp), 20)
+			await scene.get_tree().create_timer(0.6).timeout
+		"fate_scene":
+			# The same through the duel screen: you are at 1500 with one card and nothing on the field.
+			st.players[ME].lp = 1500
+			while st.players[ME].hand.size() > 1:
+				st.players[ME].hand.pop_back()
+			st.turn = 5
+			await scene._play([{"type": "turn", "player": ME},
+				{"type": "draw", "player": ME, "card": st.players[ME].deck[0], "deck": st.players[ME].deck.size() - 1}])
+			print("FATE scene: fated=", scene._fated)
+			await scene.get_tree().create_timer(0.6).timeout
+		"lp_hit":
+			scene.hud.set_lp(ME, 5200, -2800)
+			await scene.get_tree().create_timer(3.0).timeout
+		"ace_new":
+			var an := OS.get_environment("FX_ACE") if OS.has_environment("FX_ACE") else "Shooting Star Dragon"
+			var ac = _mk(st, an, ME)
+			var ad: Dictionary = (ac.data as Dictionary).duplicate()
+			ad["id"] = ac.id
+			SummonShow.play(scene, ad, true)
+			await scene.get_tree().create_timer(2.4).timeout
 		"lumen_summon":
 			await board.anim_summon(ME, _mk_id(st, 99200001, ME), 2, false)
 			await board.hologram(_mk_id(st, 99200001, ME), board.monster_zone_pos(ME, 2))

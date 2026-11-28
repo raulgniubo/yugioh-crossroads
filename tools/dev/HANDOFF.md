@@ -1864,3 +1864,28 @@ A build is two packs now, so an update is one small file in the chat and not 1 G
   Lumen beside your duelist too (LumenSpirit.floating sets `picture`). Deck shop: "See all N cards" is the whole
   deck (40), not its different cards (24). Raul asked for ideas for duel animations: a list was given, nothing
   started. He likes: white/gold on dark, calm fields, things that stop.
+
+## 0.83.0 (Nov 27 evening): duel animations (Raul: "trabaja en todo, que quede espectacular")
+I gave Raul eight ideas WITHOUT reading the code first, and five of them were already in the game: the damage number
+flying to the Life Points and the counter rolling (hud._float_number), the camera following an attack and whipping
+to the duelist on a direct one (board._battle_follow), "+300" over a monster (board._stat_pop), the chain's links
+snapping as it resolves (ChainFx), a Trap's burst and the line to its targets (anim_trap, CardFx.aim). He was told.
+READ WHAT EXISTS BEFORE PROPOSING: the duel is far along (ElementFx, StrikeFx, ClashFx, ChainFx, CardFx, DuelFx,
+SummonShow, DestinyShow, ScreenFx).
+What is new:
+- **How a destroyed card goes depends on what took it down** (board.anim_destroy(inst, overlays, how),
+  DESTROY_LOOKS; the scene's `_destroyed_by`): in battle a cut across it (`_slash`) and the pieces thrown the way
+  the blow went; by Attribute of the monster that did it: FIRE burns, WATER goes under, WIND is blown off, EARTH
+  crumbles, LIGHT rises in a shaft, DARK sinks into a pit; a Spell / Trap alone: a burst in its color. Nothing
+  known: the old shatter. All under half a second.
+- **The draw everything rides on** (board.anim_draw_fate; scene `_fate_draw`): 2000 LP or fewer, a card in hand at
+  most, and nothing on your field or a monster across that can end it. Once a duel per duelist. Not Destiny Draw
+  (that lets you choose the card and has its own show).
+- **27 more aces with an entrance of their own** (SummonShow.SIGNATURE, 56 in all): the three Gods, Dark Paladin,
+  Jinzo, Rainbow Dragon, Yubel, Ancient Gear Golem, Shooting Star Dragon, Red Nova Dragon, Utopia Ray, Tachyon
+  Dragon... Lines in Spanish. An ace with "" for its attack has no named strike.
+- **The Life Points bar keeps what was just lost lit for a moment** (DuelistPanel.lp_ghost), then it drains.
+- FxDemo: gone_fire / water / wind / earth / light / dark / battle / spell / trap, fate_draw, fate_draw_opp,
+  fate_scene, lp_hit, ace_new (FX_ACE=<name>). /tmp/fxbatch.sh films several without syncing; /tmp/fxsheet.py (CROP).
+- Filmed: battle, fire, dark, wind, light, the draw (board and through the scene). NOT filmed: water, earth, spell,
+  trap, the opponent's fate draw, the LP bar, any of the 27 entrances.
